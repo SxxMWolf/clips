@@ -51,9 +51,9 @@ When given a topic, generate:
    - "Would you do this? Comment below!"
    - "Which one would you pick?"
    The hook should present a choice, dilemma, or question that encourages engagement.
-3. 15-25 viral hashtags for TikTok/Reels/Shorts
+3. Exactly 5 relevant hashtags for TikTok/Reels/Shorts
 
-IMPORTANT: The hashtags MUST ALWAYS include these essential keywords: #fyp, #viral, #trending, #shorts, #foryou. Then add 10-20 additional relevant hashtags related to the topic.
+IMPORTANT: The hashtags MUST ALWAYS include #fyp as the first hashtag. Then add exactly 4 additional relevant hashtags directly related to the topic/content. Keep them specific and relevant to the post content.
 
 Focus on content that could realistically go viral. The hook caption should always end with a question or choice that makes viewers want to comment.
 
@@ -61,7 +61,7 @@ Return JSON format:
 {
   "video_prompt": "Simple English translation of the topic, easy to understand",
   "hook_caption": "Short hook caption with engaging question here",
-  "hashtags": ["#fyp", "#viral", "#trending", "#shorts", "#foryou", "#tag1", "#tag2", ...]
+  "hashtags": ["#fyp", "#tag1", "#tag2", "#tag3", "#tag4"]
 }"""
 
         user_prompt = f"Topic: {topic}\n\nGenerate the AI video prompt, hook caption, and viral hashtags."
@@ -91,22 +91,26 @@ Return JSON format:
                 for tag in hashtags
             ]
             
-            # 필수 해시태그 (항상 포함)
-            essential_hashtags = ["#fyp", "#viral", "#trending", "#shorts", "#foryou"]
-            
-            # 필수 해시태그가 없으면 추가
+            # 필수 해시태그: #fyp (항상 첫 번째)
             final_hashtags = []
             hashtags_lower = [tag.lower() for tag in hashtags]
             
-            # 필수 해시태그 먼저 추가
-            for essential in essential_hashtags:
-                if essential.lower() not in hashtags_lower:
-                    final_hashtags.append(essential)
+            # #fyp가 없으면 첫 번째에 추가
+            if "#fyp" not in hashtags_lower and "#fyp" not in [h.lower() for h in hashtags]:
+                final_hashtags.append("#fyp")
             
-            # 나머지 해시태그 추가 (중복 제거)
+            # 나머지 해시태그 추가 (중복 제거, #fyp는 제외하고 추가)
             for tag in hashtags:
-                if tag.lower() not in [t.lower() for t in final_hashtags]:
+                tag_lower = tag.lower()
+                if tag_lower not in [t.lower() for t in final_hashtags] and tag_lower != "#fyp":
                     final_hashtags.append(tag)
+            
+            # #fyp가 있으면 첫 번째로 이동
+            if "#fyp" in [h.lower() for h in final_hashtags]:
+                final_hashtags = [h for h in final_hashtags if h.lower() != "#fyp"]
+                final_hashtags.insert(0, "#fyp")
+            elif "#fyp" not in [h.lower() for h in final_hashtags]:
+                final_hashtags.insert(0, "#fyp")
             
             # Hook caption에 크레딧 멘트 추가 (옵션)
             hook_caption = result.get("hook_caption", "")
@@ -138,21 +142,13 @@ Return JSON format:
                 # "This is (주제)" 형식으로 시작
                 video_prompt = f"This is {video_prompt_clean}."
                 
-                # 주제에 따라 ASMR 여부 결정
-                asmr_keywords = ["asmr", "cutting", "satisfying", "slime", "jelly", "squish", "crush", "relaxing", "soothing"]
-                is_asmr_topic = any(keyword in topic.lower() for keyword in asmr_keywords)
-                
-                if is_asmr_topic:
-                    # ASMR 주제인 경우
-                    video_prompt += " make an asmr-focused video with no music. make it hd. make the video as long as possible. in 9:16 aspect ratio."
-                else:
-                    # ASMR이 아닌 주제인 경우 (액션, 스포츠, 드라마 등)
-                    video_prompt += " cinematic, realistic lighting, dramatic atmosphere. make it hd. make the video as long as possible. in 9:16 aspect ratio."
+                # 모든 프롬프트에 ASMR 중심, 노래 없이 추가
+                video_prompt += " make an asmr-focused video with no music. make it hd. make the video as long as possible. in 9:16 aspect ratio."
             
             return {
                 "video_prompt": video_prompt,
                 "hook_caption": hook_caption,
-                "hashtags": final_hashtags[:25]  # 최대 25개
+                "hashtags": final_hashtags[:5]  # 정확히 5개 (#fyp 포함)
             }
             
         except Exception as e:
@@ -162,18 +158,12 @@ Return JSON format:
             if add_credit:
                 hook_caption_fallback += "\n\ninspired by pinterest. please dm me for credits"
             
-            # 폴백에서도 주제에 따라 ASMR 여부 결정
-            asmr_keywords = ["asmr", "cutting", "satisfying", "slime", "jelly", "squish", "crush", "relaxing", "soothing"]
-            is_asmr_topic = any(keyword in topic.lower() for keyword in asmr_keywords)
-            
-            if is_asmr_topic:
-                fallback_prompt = f"This is {topic}. make an asmr-focused video with no music. make it hd. make the video as long as possible. in 9:16 aspect ratio."
-            else:
-                fallback_prompt = f"This is {topic}. cinematic, realistic lighting, dramatic atmosphere. make it hd. make the video as long as possible. in 9:16 aspect ratio."
+            # 폴백도 항상 ASMR 중심
+            fallback_prompt = f"This is {topic}. make an asmr-focused video with no music. make it hd. make the video as long as possible. in 9:16 aspect ratio."
             
             return {
                 "video_prompt": fallback_prompt,
                 "hook_caption": hook_caption_fallback,
-                "hashtags": ["#viral", "#trending", "#shorts", "#fyp", "#foryou"]
+                "hashtags": ["#fyp", "#viral", "#trending", "#shorts", "#foryou"][:5]  # 폴백도 5개
             }
 

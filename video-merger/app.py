@@ -215,10 +215,10 @@ def upload_video():
 
 @app.route('/api/upload/video/clear', methods=['POST'])
 def clear_videos():
-    """모든 업로드된 영상 파일을 /Users/sxxm/Documents/aiclips로 이동"""
+    """모든 업로드된 영상 파일을 /Users/sxxm/Documents/aiclips/vid로 이동"""
     try:
         raw_dir = Path("videos/raw")
-        destination_dir = Path("/Users/sxxm/Documents/aiclips")
+        destination_dir = Path("/Users/sxxm/Documents/aiclips/vid")
         
         # 목적지 디렉토리가 없으면 생성
         destination_dir.mkdir(parents=True, exist_ok=True)
@@ -243,7 +243,7 @@ def clear_videos():
         
         return jsonify({
             'success': True,
-            'message': f'{moved_count}개의 파일이 /Users/sxxm/Documents/aiclips로 이동되었습니다.'
+            'message': f'{moved_count}개의 파일이 /Users/sxxm/Documents/aiclips/vid로 이동되었습니다.'
         })
     except Exception as e:
         return jsonify({
