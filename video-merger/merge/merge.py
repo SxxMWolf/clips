@@ -22,8 +22,10 @@ class VideoMerger:
     """영상 병합 클래스"""
     
     def __init__(self, keyword: str = None, video_order: list = None, video_texts: dict = None, aspect_ratio: str = '9:16'):
-        self.raw_dir = Path("videos/raw")
-        self.final_dir = Path("videos/final")
+        # 상위 디렉토리 기준으로 경로 설정
+        BASE_DIR = Path(__file__).parent.parent
+        self.raw_dir = BASE_DIR / "videos" / "raw"
+        self.final_dir = BASE_DIR / "videos" / "final"
         self.video_order = video_order  # 사용자가 지정한 순서
         self.video_texts = video_texts or {}  # 각 영상의 하단 텍스트 {filename: text}
         self.aspect_ratio = aspect_ratio  # 출력 비율 (예: '9:16', '16:9', '1:1')
@@ -251,7 +253,7 @@ class VideoMerger:
                     temp_file = tempfile.NamedTemporaryFile(
                         suffix='.mp4',
                         delete=False,
-                        dir=self.raw_dir.parent
+                        dir=str(self.raw_dir.parent)
                     )
                     temp_file.close()
                     temp_files.append(Path(temp_file.name))

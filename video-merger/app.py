@@ -12,12 +12,20 @@ import traceback
 from pathlib import Path
 from flask import Flask, render_template, request, jsonify, send_from_directory, Response
 from dotenv import load_dotenv
-from merge import VideoMerger
-from prompt_generator import PromptGenerator
+from merge.merge import VideoMerger
+from prompt.prompt_generator import PromptGenerator
 import requests
 
 # 로거 설정
 logger = logging.getLogger(__name__)
+
+# Flask 개발 서버 경고 메시지 숨기기
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="werkzeug")
+warnings.filterwarnings("ignore", message=".*development server.*")
+logging.getLogger("werkzeug").setLevel(logging.ERROR)
+# Flask의 기본 경고 메시지 숨기기
+os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
 # 환경 변수 로드
 load_dotenv()
@@ -367,11 +375,17 @@ if __name__ == '__main__':
     Path("templates").mkdir(exist_ok=True)
     Path("static").mkdir(exist_ok=True)
     
-    print("=" * 50)
-    print("쇼츠 영상 자동 병합 웹 서버")
-    print("=" * 50)
-    print("브라우저에서 http://localhost:5001 접속")
-    print("=" * 50)
-    
-    app.run(debug=True, host='0.0.0.0', port=5001)
+                print("=" * 50)
+                print("쇼츠 영상 자동 병합 웹 서버")
+                print("=" * 50)
+                print("브라우저에서 http://localhost:5001 접속")
+                print("=" * 50)
+                
+                # Flask 개발 서버 경고 메시지 숨기기
+                import sys
+                import warnings
+                if not sys.warnoptions:
+                    warnings.simplefilter("ignore")
+                
+                app.run(debug=True, host='0.0.0.0', port=5001, use_reloader=False)
 

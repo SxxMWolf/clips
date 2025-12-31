@@ -15,10 +15,10 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, HttpUrl
 from dotenv import load_dotenv
 
-from stt_service import STTService
-from clip_selector import ClipSelector
-from clip_generator import ClipGenerator
-from caption_generator import CaptionGenerator
+from .stt_service import STTService
+from .clip_selector import ClipSelector
+from .clip_generator import ClipGenerator
+from .caption_generator import CaptionGenerator
 
 # 환경 변수 로드
 load_dotenv()
@@ -41,11 +41,12 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 디렉토리 설정
-VIDEOS_DIR = Path("videos")
+# 디렉토리 설정 (상위 디렉토리 기준)
+BASE_DIR = Path(__file__).parent.parent
+VIDEOS_DIR = BASE_DIR / "videos"
 DOWNLOADS_DIR = VIDEOS_DIR / "downloads"
 CLIPS_DIR = VIDEOS_DIR / "clips"
-TRANSCRIPTS_DIR = Path("transcripts")
+TRANSCRIPTS_DIR = BASE_DIR / "transcripts"
 
 # 디렉토리 생성
 for dir_path in [DOWNLOADS_DIR, CLIPS_DIR, TRANSCRIPTS_DIR]:

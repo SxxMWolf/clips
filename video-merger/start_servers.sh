@@ -7,7 +7,7 @@ echo "================================"
 
 # FastAPI 서버 시작 (백그라운드)
 echo "📡 FastAPI 서버 시작 (포트 8000)..."
-python3 ai_clipping_api.py &
+(cd ai_clipping && python3 ai_clipping_api.py) &
 FASTAPI_PID=$!
 
 # 잠시 대기
