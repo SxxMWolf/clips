@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+
+{% block title %}AI 클립 생성 - Video Clips{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <header class="page-header">
+        <h1>AI 클립 생성</h1>
+        <p class="subtitle">YouTube 영상에서 바이럴 잠재력이 높은 클립을 자동으로 생성합니다</p>
+    </header>
+
+    <section class="ai-clip-section">
+        <div class="form-card">
+            <h3>YouTube 영상 가져오기</h3>
+            <div class="form-group">
+                <label for="youtube-url">YouTube URL</label>
+                <input type="url" id="youtube-url" class="form-control" placeholder="https://www.youtube.com/watch?v=..." required>
+            </div>
+            
+            <div class="form-group">
+                <label for="ai-prompt">프롬프트 (선택사항)</label>
+                <input type="text" id="ai-prompt" class="form-control" placeholder="Find the most engaging and viral moments" value="Find the most engaging and viral moments">
+            </div>
+            
+            <button id="import-youtube-btn" class="btn btn-primary">
+                YouTube 영상 다운로드
+            </button>
+        </div>
+
+        <div id="video-status" class="status-card" style="display: none;">
+            <h3>비디오 처리 상태</h3>
+            <div id="video-status-info"></div>
+            <button id="generate-clips-btn" class="btn btn-primary" style="display: none; margin-top: 20px;">
+                AI 클립 생성
+            </button>
+        </div>
+
+        <div id="clips-section" class="clips-section" style="display: none;">
+            <h3>생성된 클립</h3>
+            <div id="clips-list"></div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='ai_clip.js') }}"></script>
+{% endblock %}
+

@@ -1,0 +1,35 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+ENV/
+
+# 영상 파일
+videos/
+*.mp4
+
+# 환경 변수 및 인증 정보
+.env
+.env.*
+*.key
+*.pem
+credentials.json
+client_secret_*.json
+token.json
+*.json
+!package.json
+!package-lock.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db

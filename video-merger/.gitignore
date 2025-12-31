@@ -1,0 +1,19 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 영상 파일
+videos/
+*.mp4
+*.mov
+*.avi
+
+# 임시 파일
+*.tmp
+*.temp
+
+# OS
+.DS_Store
+Thumbs.db
+

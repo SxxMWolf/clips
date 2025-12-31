@@ -1,0 +1,727 @@
+{% extends "base.html" %}
+
+{% block title %}영상 병합 - Video Clips{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <header class="page-header">
+        <h1>영상 병합</h1>
+        <p class="subtitle">videos/raw/ 폴더의 영상들을 하나로 병합합니다</p>
+    </header>
+
+    <section class="merge-section">
+        <div class="status-card">
+            <h3>원본 영상 목록</h3>
+            
+            <!-- 드래그 앤 드롭 업로드 영역 -->
+            <div id="drop-zone" class="drop-zone" style="margin-bottom: 20px;">
+                <div class="drop-zone-content">
+                    <p class="drop-zone-text">영상 파일을 여기에 드래그하거나 클릭하여 선택하세요</p>
+                    <p class="drop-zone-hint">MP4 파일만 지원됩니다</p>
+                    <input type="file" id="file-input" multiple accept="video/mp4" style="display: none;">
+                </div>
+            </div>
+            <div id="upload-progress" class="upload-progress" style="display: none; margin-bottom: 20px;">
+                <div class="progress-bar">
+                    <div id="progress-fill" class="progress-fill"></div>
+                </div>
+                <p id="progress-text" class="progress-text">업로드 중...</p>
+            </div>
+            
+            <div id="raw-list" class="file-list"></div>
+            <div class="status-info">
+                총 <span id="raw-count">0</span> 개
+            </div>
+            <button id="clear-files-btn" class="btn btn-secondary" style="margin-top: 15px; display: none;">
+                비우기
+            </button>
+        </div>
+
+        <div class="form-card">
+            <h3>병합 설정</h3>
+            <div class="form-group">
+                <label for="keyword-input">영상 키워드 (파일명으로 사용)</label>
+                <input 
+                    type="text" 
+                    id="keyword-input" 
+                    class="form-control" 
+                    placeholder="예: AI_미래_예측"
+                    autocomplete="off"
+                >
+                <small class="form-hint">키워드를 입력하면 해당 이름으로 저장됩니다. 비워두면 자동으로 생성됩니다.</small>
+            </div>
+            <div class="form-group">
+                <label>출력 비율</label>
+                <div style="display: flex; gap: 12px; margin-top: 8px;">
+                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="9:16" style="flex: 1;">
+                        9:16 (세로형)
+                    </button>
+                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="16:9" style="flex: 1;">
+                        16:9 (가로형)
+                    </button>
+                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="1:1" style="flex: 1;">
+                        1:1 (정사각형)
+                    </button>
+                </div>
+                <small class="form-hint">세로가 짧은 영상은 검은색 여백(letterbox)이 추가됩니다</small>
+            </div>
+            <button id="merge-btn" class="btn btn-primary btn-large">
+                영상 병합 시작
+            </button>
+            <p class="help-text">모든 원본 영상이 파일명 순서대로 병합됩니다</p>
+        </div>
+
+        <div class="status-card" id="result-section" style="display: none;">
+            <h3>병합 결과</h3>
+            <div id="merged-info"></div>
+            <div id="merged-preview" class="video-preview"></div>
+        </div>
+
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // 드래그 앤 드롭 기능
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const uploadProgress = document.getElementById('upload-progress');
+    const progressFill = document.getElementById('progress-fill');
+    const progressText = document.getElementById('progress-text');
+
+    // 드롭 존 클릭
+    if (dropZone && fileInput) {
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        // 파일 선택
+        fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        // 드래그 오버
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('drag-over');
+        });
+
+        // 드래그 리브
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('drag-over');
+        });
+
+        // 드롭
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('drag-over');
+            handleFiles(e.dataTransfer.files);
+        });
+    }
+
+    // 파일 처리
+    async function handleFiles(files) {
+        const videoFiles = Array.from(files).filter(file => 
+            file.type.startsWith('video/') && file.name.toLowerCase().endsWith('.mp4')
+        );
+
+        if (videoFiles.length === 0) {
+            showToast('MP4 영상 파일만 업로드 가능합니다', 'error');
+            return;
+        }
+
+        if (uploadProgress) {
+            uploadProgress.style.display = 'block';
+        }
+        if (progressFill) {
+            progressFill.style.width = '0%';
+        }
+        if (progressText) {
+            progressText.textContent = '업로드 준비 중...';
+        }
+
+        let uploaded = 0;
+        const total = videoFiles.length;
+
+        for (let i = 0; i < videoFiles.length; i++) {
+            const file = videoFiles[i];
+            const formData = new FormData();
+            formData.append('file', file);
+
+            try {
+                const response = await fetch('/api/upload/video', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success) {
+                    uploaded++;
+                    const progress = Math.round((uploaded / total) * 100);
+                    if (progressFill) {
+                        progressFill.style.width = progress + '%';
+                    }
+                    if (progressText) {
+                        progressText.textContent = `업로드 중... ${uploaded}/${total}`;
+                    }
+                } else {
+                    showToast(`${file.name} 업로드 실패: ${result.message}`, 'error');
+                }
+            } catch (error) {
+                showToast(`${file.name} 업로드 실패: ${error.message}`, 'error');
+            }
+        }
+
+        if (uploaded > 0) {
+            showToast(`${uploaded}개 파일이 업로드되었습니다`, 'success');
+            setTimeout(() => {
+                if (uploadProgress) {
+                    uploadProgress.style.display = 'none';
+                }
+                updateStatus();
+            }, 1000);
+        } else {
+            if (uploadProgress) {
+                uploadProgress.style.display = 'none';
+            }
+        }
+    }
+
+    // 영상 순서 저장 (localStorage)
+    let videoOrder = [];
+    
+    // 영상 텍스트 저장 (localStorage)
+    let videoTexts = {};
+    
+    function saveVideoOrder() {
+        localStorage.setItem('video_merge_order', JSON.stringify(videoOrder));
+    }
+    
+    function loadVideoOrder() {
+        const saved = localStorage.getItem('video_merge_order');
+        if (saved) {
+            try {
+                videoOrder = JSON.parse(saved);
+            } catch (e) {
+                videoOrder = [];
+            }
+        }
+    }
+    
+    function saveVideoTexts() {
+        // 현재 입력된 텍스트들을 저장
+        const rawList = document.getElementById('raw-list');
+        if (rawList) {
+            const inputs = rawList.querySelectorAll('.video-caption-input');
+            inputs.forEach(input => {
+                const filename = input.dataset.filename;
+                const text = input.value.trim();
+                if (text) {
+                    videoTexts[filename] = text;
+                } else {
+                    delete videoTexts[filename];
+                }
+            });
+        }
+        localStorage.setItem('video_merge_texts', JSON.stringify(videoTexts));
+    }
+    
+    function loadVideoTexts() {
+        const saved = localStorage.getItem('video_merge_texts');
+        if (saved) {
+            try {
+                videoTexts = JSON.parse(saved);
+            } catch (e) {
+                videoTexts = {};
+            }
+        }
+    }
+    
+    function restoreVideoTexts() {
+        // 저장된 텍스트를 입력 필드에 복원
+        const rawList = document.getElementById('raw-list');
+        if (rawList) {
+            const inputs = rawList.querySelectorAll('.video-caption-input');
+            inputs.forEach(input => {
+                const filename = input.dataset.filename;
+                if (videoTexts[filename]) {
+                    input.value = videoTexts[filename];
+                }
+            });
+        }
+    }
+    
+    function makeSortable() {
+        const rawList = document.getElementById('raw-list');
+        if (!rawList) return;
+        
+        // Sortable 기능 구현
+        let draggedElement = null;
+        
+        const items = rawList.querySelectorAll('.video-item');
+        items.forEach(item => {
+            item.draggable = true;
+            item.style.cursor = 'move';
+            
+            item.addEventListener('dragstart', (e) => {
+                draggedElement = item;
+                item.classList.add('dragging');
+                e.dataTransfer.effectAllowed = 'move';
+            });
+            
+            item.addEventListener('dragend', () => {
+                item.classList.remove('dragging');
+                draggedElement = null;
+            });
+            
+            item.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+                
+                const afterElement = getDragAfterElement(rawList, e.clientY);
+                if (afterElement == null || !afterElement) {
+                    rawList.appendChild(draggedElement);
+                } else if (afterElement instanceof Node) {
+                    rawList.insertBefore(draggedElement, afterElement);
+                }
+            });
+            
+            item.addEventListener('drop', (e) => {
+                e.preventDefault();
+                updateVideoOrder();
+            });
+        });
+    }
+    
+    function getDragAfterElement(container, y) {
+        const draggableElements = [...container.querySelectorAll('.video-item:not(.dragging)')];
+        
+        const result = draggableElements.reduce((closest, child) => {
+            const box = child.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            
+            if (offset < 0 && offset > closest.offset) {
+                return { offset: offset, element: child };
+            } else {
+                return closest;
+            }
+        }, { offset: Number.NEGATIVE_INFINITY });
+        
+        return result.element || null;
+    }
+    
+    function updateVideoOrder() {
+        const rawList = document.getElementById('raw-list');
+        const items = rawList.querySelectorAll('.video-item');
+        videoOrder = Array.from(items).map(item => item.dataset.filename);
+        saveVideoOrder();
+        
+        // 번호 업데이트
+        items.forEach((item, index) => {
+            const numberSpan = item.querySelector('.video-number');
+            if (numberSpan) {
+                numberSpan.textContent = index + 1;
+            }
+        });
+    }
+    
+    async function updateStatus() {
+        try {
+            // 입력 필드가 포커스되어 있으면 업데이트 건너뛰기
+            const activeElement = document.activeElement;
+            const isInputFocused = activeElement && activeElement.classList && activeElement.classList.contains('video-caption-input');
+            if (isInputFocused || isAnyInputFocused) {
+                return; // 포커스되어 있으면 완전히 건너뛰기
+            }
+            
+            const response = await fetch('/api/status');
+            const status = await response.json();
+            
+            document.getElementById('raw-count').textContent = status.raw_count || 0;
+            const rawList = document.getElementById('raw-list');
+            if (status.raw_videos && status.raw_videos.length > 0) {
+                let focusedFilename = null;
+                let focusedValue = '';
+                let cursorPosition = 0;
+                
+                // 포커스된 입력 필드의 현재 값과 커서 위치 저장
+                if (isInputFocused) {
+                    focusedFilename = activeElement.dataset.filename;
+                    focusedValue = activeElement.value;
+                    cursorPosition = activeElement.selectionStart || focusedValue.length;
+                    if (focusedFilename) {
+                        videoTexts[focusedFilename] = focusedValue;
+                        saveVideoTexts();
+                    }
+                }
+                
+                // 현재 모든 입력 필드의 값 저장 (포커스되지 않은 필드도)
+                const existingInputs = rawList.querySelectorAll('.video-caption-input');
+                existingInputs.forEach(input => {
+                    const filename = input.dataset.filename;
+                    if (filename && filename !== focusedFilename) {
+                        videoTexts[filename] = input.value;
+                    }
+                });
+                
+                // 저장된 순서가 있으면 사용, 없으면 서버 순서 사용
+                loadVideoOrder();
+                
+                // 저장된 순서와 현재 파일 목록 비교하여 유효한 순서만 사용
+                const validOrder = videoOrder.filter(filename => 
+                    status.raw_videos.includes(filename)
+                );
+                const newFiles = status.raw_videos.filter(filename => 
+                    !videoOrder.includes(filename)
+                );
+                
+                // 유효한 순서 + 새 파일들
+                const orderedVideos = [...validOrder, ...newFiles];
+                
+                // 저장된 텍스트 로드 (포커스된 필드는 현재 값 유지)
+                loadVideoTexts();
+                if (focusedFilename && focusedValue) {
+                    videoTexts[focusedFilename] = focusedValue;
+                }
+                
+                // 파일명에서 타임스탬프 제거하여 표시
+                rawList.innerHTML = orderedVideos.map((video, i) => {
+                    const displayName = video.includes('_') ? video.split('_').slice(1).join('_') : video;
+                    const videoId = `video-${i}`;
+                    const savedText = videoTexts[video] || '';
+                    // HTML 이스케이프 처리
+                    const escapedText = savedText
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#39;');
+                    return `
+                        <div class="video-item" data-filename="${video}" style="
+                            padding: 12px;
+                            margin-bottom: 12px;
+                            background: var(--bg-secondary);
+                            border: 1px solid var(--border-color);
+                            border-radius: var(--radius-md);
+                            transition: all 0.2s;
+                        ">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                <span class="video-number" style="
+                                    font-weight: 600;
+                                    color: var(--accent);
+                                    min-width: 24px;
+                                ">${i + 1}</span>
+                                <span style="flex: 1; color: var(--text-primary);">${displayName}</span>
+                                <span style="
+                                    color: var(--text-muted);
+                                    font-size: 12px;
+                                    cursor: move;
+                                ">⋮⋮</span>
+                            </div>
+                            <div style="margin-top: 8px;">
+                                <textarea 
+                                    id="${videoId}" 
+                                    class="video-caption-input form-control" 
+                                    placeholder="하단에 표시할 텍스트 (선택사항)&#10;Shift+Enter로 줄바꿈"
+                                    data-filename="${video}"
+                                    rows="2"
+                                    style="width: 100%; font-size: 13px; padding: 8px; resize: vertical; min-height: 40px;"
+                                    autocomplete="off"
+                                >${escapedText}</textarea>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                // 입력 필드에 이벤트 리스너 추가 (텍스트 저장)
+                const textInputs = rawList.querySelectorAll('.video-caption-input');
+                textInputs.forEach(input => {
+                    // Enter 키는 기본 동작(제출) 방지, Shift+Enter는 줄바꿈 허용
+                    input.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault(); // Enter만 누르면 제출 방지
+                        }
+                        // Shift+Enter는 기본 동작(줄바꿈) 허용
+                    });
+                    
+                    input.addEventListener('input', (e) => {
+                        const filename = e.target.dataset.filename;
+                        if (filename) {
+                            videoTexts[filename] = e.target.value;
+                            saveVideoTexts();
+                        }
+                    });
+                    input.addEventListener('blur', (e) => {
+                        const filename = e.target.dataset.filename;
+                        if (filename) {
+                            videoTexts[filename] = e.target.value;
+                            saveVideoTexts();
+                        }
+                    });
+                });
+                
+                // 포커스가 있었던 입력 필드로 다시 포커스
+                if (isInputFocused && focusedFilename) {
+                    const restoredInput = rawList.querySelector(`.video-caption-input[data-filename="${focusedFilename}"]`);
+                    if (restoredInput) {
+                        // 약간의 지연 후 포커스 (DOM 업데이트 완료 후)
+                        setTimeout(() => {
+                            restoredInput.focus();
+                            // 커서를 저장된 위치로 이동
+                            const maxPosition = restoredInput.value.length;
+                            const pos = Math.min(cursorPosition, maxPosition);
+                            restoredInput.setSelectionRange(pos, pos);
+                        }, 50);
+                    }
+                }
+                
+                // videoOrder 업데이트
+                videoOrder = orderedVideos;
+                saveVideoOrder();
+                
+                
+                // Sortable 기능 활성화
+                setTimeout(() => makeSortable(), 100);
+                
+                // 비우기 버튼 표시
+                const clearFilesBtn = document.getElementById('clear-files-btn');
+                if (clearFilesBtn) {
+                    clearFilesBtn.style.display = 'block';
+                }
+            } else {
+                rawList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px 0;">영상이 없습니다</div>';
+                videoOrder = [];
+                saveVideoOrder();
+                
+                // 비우기 버튼 숨기기
+                const clearFilesBtn = document.getElementById('clear-files-btn');
+                if (clearFilesBtn) {
+                    clearFilesBtn.style.display = 'none';
+                }
+            }
+            
+            if (status.merged_exists && status.latest_merged) {
+                document.getElementById('result-section').style.display = 'block';
+                document.getElementById('merged-info').innerHTML = `
+                    <div>병합 완료</div>
+                    <div>파일명: ${status.latest_merged}</div>
+                    <div>크기: ${status.merged_size} MB</div>
+                `;
+                document.getElementById('merged-preview').innerHTML = `
+                    <video controls style="width: 100%; border-radius: 10px; max-height: 400px;">
+                        <source src="/videos/${status.latest_merged}" type="video/mp4">
+                    </video>
+                `;
+            } else {
+                document.getElementById('result-section').style.display = 'none';
+            }
+        } catch (error) {
+            console.error('상태 업데이트 오류:', error);
+        }
+    }
+
+    // 출력 비율 선택
+    let selectedAspectRatio = '9:16'; // 기본값
+    document.querySelectorAll('.aspect-ratio-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+            document.querySelectorAll('.aspect-ratio-btn').forEach(b => {
+                b.classList.remove('btn-primary');
+                b.classList.add('btn-secondary');
+            });
+            btn.classList.remove('btn-secondary');
+            btn.classList.add('btn-primary');
+            selectedAspectRatio = btn.dataset.ratio;
+        });
+    });
+    // 기본값 선택
+    document.querySelector('.aspect-ratio-btn[data-ratio="9:16"]').classList.remove('btn-secondary');
+    document.querySelector('.aspect-ratio-btn[data-ratio="9:16"]').classList.add('btn-primary');
+    
+    document.getElementById('merge-btn').addEventListener('click', async () => {
+        const btn = document.getElementById('merge-btn');
+        const keywordInput = document.getElementById('keyword-input');
+        const keyword = keywordInput.value.trim();
+        
+        // 현재 순서 가져오기
+        loadVideoOrder();
+        const rawList = document.getElementById('raw-list');
+        const items = rawList.querySelectorAll('.video-item');
+        const currentOrder = Array.from(items).map(item => item.dataset.filename);
+        
+        // 각 영상의 텍스트 가져오기
+        const currentVideoTexts = {};
+        items.forEach(item => {
+            const filename = item.dataset.filename;
+            const input = item.querySelector('.video-caption-input');
+            if (input) {
+                const text = input.value.trim();
+                if (text) {
+                    currentVideoTexts[filename] = text;
+                }
+            }
+        });
+        
+        // 순서가 있으면 사용, 없으면 서버 순서 사용
+        const orderToUse = currentOrder.length > 0 ? currentOrder : videoOrder;
+        
+        btn.disabled = true;
+        btn.textContent = '병합 중...';
+        
+        // 병합 시작 알림
+        showToast('병합을 시작합니다', 'info');
+        
+        // 병합 전 최신 파일 확인
+        let latestFileBefore = null;
+        try {
+            const statusResponse = await fetch('/api/status');
+            const status = await statusResponse.json();
+            latestFileBefore = status.latest_merged;
+        } catch (e) {
+            console.warn('상태 확인 실패:', e);
+        }
+        
+        try {
+            const response = await fetch('/api/merge', { 
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ 
+                    keyword: keyword || null,
+                    video_order: orderToUse.length > 0 ? orderToUse : null,
+                    video_texts: Object.keys(currentVideoTexts).length > 0 ? currentVideoTexts : null,
+                    aspect_ratio: selectedAspectRatio
+                })
+            });
+            const result = await response.json();
+            
+            if (result.success) {
+                keywordInput.value = ''; // 키워드 입력 필드 초기화
+                // 병합 후 순서 및 텍스트 초기화
+                videoOrder = [];
+                videoTexts = {};
+                saveVideoOrder();
+                saveVideoTexts();
+                
+                // 병합 완료 확인 (폴링)
+                let checkCount = 0;
+                const maxChecks = 60; // 최대 60번 확인 (약 5분)
+                const checkInterval = setInterval(async () => {
+                    checkCount++;
+                    try {
+                        const statusResponse = await fetch('/api/status');
+                        const status = await statusResponse.json();
+                        
+                        // 새로운 병합 파일이 생성되었는지 확인
+                        if (status.latest_merged && status.latest_merged !== latestFileBefore) {
+                            clearInterval(checkInterval);
+                            showToast('병합이 완료되었습니다', 'success');
+                            updateStatus();
+                            btn.disabled = false;
+                            btn.textContent = '영상 병합 시작';
+                        } else if (checkCount >= maxChecks) {
+                            clearInterval(checkInterval);
+                            showToast('병합이 완료되었을 수 있습니다', 'info');
+                            updateStatus();
+                            btn.disabled = false;
+                            btn.textContent = '영상 병합 시작';
+                        }
+                    } catch (e) {
+                        console.error('상태 확인 오류:', e);
+                        if (checkCount >= maxChecks) {
+                            clearInterval(checkInterval);
+                            btn.disabled = false;
+                            btn.textContent = '영상 병합 시작';
+                        }
+                    }
+                }, 5000); // 5초마다 확인
+                
+            } else {
+                showToast('병합 실패', 'error');
+                btn.disabled = false;
+                btn.textContent = '영상 병합 시작';
+            }
+        } catch (error) {
+            showToast('오류 발생: ' + error.message, 'error');
+            btn.disabled = false;
+            btn.textContent = '영상 병합 시작';
+        }
+    });
+
+    // 원본 영상 비우기
+    const clearFilesBtn = document.getElementById('clear-files-btn');
+    if (clearFilesBtn) {
+        clearFilesBtn.addEventListener('click', async () => {
+            if (!confirm('모든 원본 영상을 /Users/sxxm/Documents/aiclips로 이동하시겠습니까?')) {
+                return;
+            }
+
+            clearFilesBtn.disabled = true;
+            clearFilesBtn.textContent = '이동 중...';
+
+            try {
+                const response = await fetch('/api/upload/video/clear', { method: 'POST' });
+                const result = await response.json();
+                
+                if (result.success) {
+                    showToast(result.message || '원본 영상이 모두 이동되었습니다', 'success');
+                    updateStatus();
+                } else {
+                    showToast(result.message || '이동 실패', 'error');
+                }
+            } catch (error) {
+                showToast('오류 발생: ' + error.message, 'error');
+            } finally {
+                clearFilesBtn.disabled = false;
+                clearFilesBtn.textContent = '비우기';
+            }
+        });
+    }
+
+    // 입력 필드가 포커스되어 있는지 추적
+    let isAnyInputFocused = false;
+    let focusedInputElement = null;
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        updateStatus();
+        
+        // 입력 필드 포커스 추적 (전역 이벤트 리스너)
+        document.addEventListener('focusin', (e) => {
+            if (e.target.classList && e.target.classList.contains('video-caption-input')) {
+                isAnyInputFocused = true;
+                focusedInputElement = e.target;
+            }
+        }, true); // capture phase에서 처리
+        
+        document.addEventListener('focusout', (e) => {
+            if (e.target.classList && e.target.classList.contains('video-caption-input')) {
+                // 약간의 지연 후 포커스 상태 업데이트 (다른 입력 필드로 이동할 수 있음)
+                setTimeout(() => {
+                    const activeElement = document.activeElement;
+                    if (activeElement && activeElement.classList && activeElement.classList.contains('video-caption-input')) {
+                        isAnyInputFocused = true;
+                        focusedInputElement = activeElement;
+                    } else {
+                        isAnyInputFocused = false;
+                        focusedInputElement = null;
+                    }
+                }, 200);
+            }
+        }, true); // capture phase에서 처리
+        
+        // 입력 필드가 포커스되어 있지 않을 때만 상태 업데이트
+        setInterval(() => {
+            // 현재 포커스 상태 재확인
+            const activeElement = document.activeElement;
+            const currentlyFocused = activeElement && activeElement.classList && activeElement.classList.contains('video-caption-input');
+            
+            if (!currentlyFocused && !isAnyInputFocused) {
+                updateStatus();
+            }
+        }, 5000);
+        
+    });
+</script>
+{% endblock %}
+

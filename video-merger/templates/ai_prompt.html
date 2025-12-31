@@ -1,0 +1,237 @@
+{% extends "base.html" %}
+
+{% block title %}AI 프롬프트 생성 - Video Clips{% endblock %}
+
+{% block content %}
+<div class="page-container">
+    <header class="page-header">
+        <h1>AI 프롬프트 생성</h1>
+        <p class="subtitle">주제를 입력하면 바이럴 프롬프트, 훅, 해시태그를 자동 생성합니다</p>
+    </header>
+
+    <section class="prompt-section">
+        <!-- 입력 영역 -->
+        <div class="form-card">
+            <h3>주제 입력</h3>
+            <div class="form-group">
+                <label for="topic-input">주제</label>
+                <input 
+                    type="text" 
+                    id="topic-input" 
+                    class="form-control" 
+                    placeholder="예: AI가 인간을 대체하는 미래"
+                    autocomplete="off"
+                >
+                <small class="form-hint">어떤 주제의 비디오/이미지를 만들고 싶으신가요?</small>
+            </div>
+            <button id="generate-btn" class="btn btn-primary btn-large">
+                프롬프트 생성
+            </button>
+        </div>
+
+        <!-- 결과 영역 -->
+        <div id="result-section" style="display: none;">
+            <!-- AI Video/Image Prompt -->
+            <div class="form-card">
+                <h3>1. AI VIDEO / IMAGE PROMPT (ENGLISH)</h3>
+                <div class="prompt-result">
+                    <div id="video-prompt" class="prompt-text"></div>
+                    <button class="btn btn-secondary copy-btn" data-target="video-prompt">
+                        복사
+                    </button>
+                </div>
+            </div>
+
+            <!-- Hook Caption -->
+            <div class="form-card">
+                <h3>2. HOOK CAPTION</h3>
+                <div class="prompt-result">
+                    <div id="hook-caption" class="prompt-text"></div>
+                    <button class="btn btn-secondary copy-btn" data-target="hook-caption">
+                        복사
+                    </button>
+                </div>
+            </div>
+
+            <!-- Viral Hashtags -->
+            <div class="form-card">
+                <h3>3. VIRAL HASHTAGS</h3>
+                <div class="prompt-result">
+                    <div id="hashtags" class="hashtags-container"></div>
+                    <button class="btn btn-secondary copy-btn" data-target="hashtags">
+                        복사
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// localStorage 키
+const STORAGE_KEY = 'ai_prompt_result';
+const TOPIC_STORAGE_KEY = 'ai_prompt_topic';
+
+// 결과를 localStorage에 저장
+function saveResult(topic, result) {
+    try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
+        localStorage.setItem(TOPIC_STORAGE_KEY, topic);
+    } catch (e) {
+        console.warn('localStorage 저장 실패:', e);
+    }
+}
+
+// localStorage에서 결과 복원
+function loadResult() {
+    try {
+        const savedResult = localStorage.getItem(STORAGE_KEY);
+        const savedTopic = localStorage.getItem(TOPIC_STORAGE_KEY);
+        
+        if (savedResult && savedTopic) {
+            const result = JSON.parse(savedResult);
+            return { topic: savedTopic, result: result };
+        }
+    } catch (e) {
+        console.warn('localStorage 로드 실패:', e);
+    }
+    return null;
+}
+
+// 결과 표시 함수
+function displayResult(result) {
+    const resultSection = document.getElementById('result-section');
+    
+    // 결과 표시
+    document.getElementById('video-prompt').textContent = result.video_prompt || '';
+    document.getElementById('hook-caption').textContent = result.hook_caption || '';
+    
+    // 해시태그 표시
+    const hashtagsContainer = document.getElementById('hashtags');
+    if (result.hashtags && result.hashtags.length > 0) {
+        hashtagsContainer.innerHTML = result.hashtags
+            .map(tag => `<span class="hashtag-tag">${tag}</span>`)
+            .join(' ');
+    } else {
+        hashtagsContainer.textContent = '해시태그 없음';
+    }
+    
+    resultSection.style.display = 'block';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    const topicInput = document.getElementById('topic-input');
+    const generateBtn = document.getElementById('generate-btn');
+    const resultSection = document.getElementById('result-section');
+    
+    // 저장된 결과 복원
+    const saved = loadResult();
+    if (saved) {
+        topicInput.value = saved.topic;
+        displayResult(saved.result);
+    } else {
+        // 결과는 없지만 주제만 저장되어 있을 수 있음
+        const savedTopic = localStorage.getItem(TOPIC_STORAGE_KEY);
+        if (savedTopic) {
+            topicInput.value = savedTopic;
+        }
+    }
+    
+    // 주제 입력 시 자동 저장 (결과 생성 전에도 저장)
+    topicInput.addEventListener('input', () => {
+        try {
+            localStorage.setItem(TOPIC_STORAGE_KEY, topicInput.value);
+        } catch (e) {
+            console.warn('주제 저장 실패:', e);
+        }
+    });
+    
+    // Enter 키로 생성
+    topicInput.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            generateBtn.click();
+        }
+    });
+    
+    // 생성 버튼 클릭
+    generateBtn.addEventListener('click', async () => {
+        const topic = topicInput.value.trim();
+        
+        if (!topic) {
+            showToast('주제를 입력해주세요', 'error');
+            return;
+        }
+        
+        // 버튼 비활성화
+        generateBtn.disabled = true;
+        generateBtn.textContent = '생성 중...';
+        resultSection.style.display = 'none';
+        
+        try {
+            const response = await fetch('/api/ai/generate-prompt', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ topic })
+            });
+            
+            const result = await response.json();
+            
+            if (result.success) {
+                // 결과 표시
+                displayResult(result.data);
+                
+                // localStorage에 저장
+                saveResult(topic, result.data);
+                
+                resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                showToast('프롬프트 생성 완료!', 'success');
+            } else {
+                showToast(result.message || '생성 실패', 'error');
+            }
+        } catch (error) {
+            console.error('오류:', error);
+            showToast('오류가 발생했습니다: ' + error.message, 'error');
+        } finally {
+            generateBtn.disabled = false;
+            generateBtn.textContent = '프롬프트 생성';
+        }
+    });
+    
+    // 복사 버튼
+    document.querySelectorAll('.copy-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const targetId = btn.getAttribute('data-target');
+            const targetElement = document.getElementById(targetId);
+            
+            let textToCopy = '';
+            
+            if (targetId === 'hashtags') {
+                // 해시태그는 모든 텍스트 추출
+                textToCopy = targetElement.textContent || '';
+            } else {
+                textToCopy = targetElement.textContent || '';
+            }
+            
+            try {
+                await navigator.clipboard.writeText(textToCopy);
+                showToast('클립보드에 복사되었습니다', 'success');
+                
+                // 버튼 텍스트 일시 변경
+                const originalText = btn.textContent;
+                btn.textContent = '복사됨!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            } catch (error) {
+                showToast('복사 실패', 'error');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
+
