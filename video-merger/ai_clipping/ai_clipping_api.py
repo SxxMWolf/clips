@@ -4,6 +4,7 @@ YouTube URL에서 바이럴 클립을 자동으로 생성합니다.
 """
 
 import os
+import sys
 import uuid
 import json
 import logging
@@ -15,10 +16,15 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, HttpUrl
 from dotenv import load_dotenv
 
-from .stt_service import STTService
-from .clip_selector import ClipSelector
-from .clip_generator import ClipGenerator
-from .caption_generator import CaptionGenerator
+# 현재 파일의 디렉토리를 sys.path에 추가 (직접 실행 시)
+current_dir = Path(__file__).parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
+from stt_service import STTService
+from clip_selector import ClipSelector
+from clip_generator import ClipGenerator
+from caption_generator import CaptionGenerator
 
 # 환경 변수 로드
 load_dotenv()

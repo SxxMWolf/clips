@@ -24,8 +24,6 @@ import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="werkzeug")
 warnings.filterwarnings("ignore", message=".*development server.*")
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
-# Flask의 기본 경고 메시지 숨기기
-os.environ['WERKZEUG_RUN_MAIN'] = 'true'
 
 # 환경 변수 로드
 load_dotenv()
@@ -375,17 +373,21 @@ if __name__ == '__main__':
     Path("templates").mkdir(exist_ok=True)
     Path("static").mkdir(exist_ok=True)
     
-                print("=" * 50)
-                print("쇼츠 영상 자동 병합 웹 서버")
-                print("=" * 50)
-                print("브라우저에서 http://localhost:5001 접속")
-                print("=" * 50)
-                
-                # Flask 개발 서버 경고 메시지 숨기기
-                import sys
-                import warnings
-                if not sys.warnoptions:
-                    warnings.simplefilter("ignore")
-                
-                app.run(debug=True, host='0.0.0.0', port=5001, use_reloader=False)
+    print("=" * 50)
+    print("쇼츠 영상 자동 병합 웹 서버")
+    print("=" * 50)
+    print("브라우저에서 http://localhost:5001 접속")
+    print("=" * 50)
+    
+    # Flask 개발 서버 경고 메시지 숨기기
+    import sys
+    import warnings
+    if not sys.warnoptions:
+        warnings.simplefilter("ignore")
+    
+    try:
+        app.run(debug=True, host='0.0.0.0', port=5001, use_reloader=False)
+    except Exception as e:
+        logger.error(f"서버 시작 실패: {e}")
+        raise
 
