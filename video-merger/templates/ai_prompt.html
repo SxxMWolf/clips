@@ -24,6 +24,20 @@
                 >
                 <small class="form-hint">어떤 주제의 비디오/이미지를 만들고 싶으신가요?</small>
             </div>
+            <div class="form-group">
+                <label>프롬프트 타입</label>
+                <div style="display: flex; gap: 12px; margin-top: 8px;">
+                    <label style="flex: 1; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="prompt-type" value="video" checked style="cursor: pointer;">
+                        <span>1. asmr</span>
+                    </label>
+                    <label style="flex: 1; display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                        <input type="radio" name="prompt-type" value="cat_travel" style="cursor: pointer;">
+                        <span>2. meow</span>
+                    </label>
+                </div>
+                <small class="form-hint">프롬프트 타입을 선택하세요</small>
+            </div>
             <button id="generate-btn" class="btn btn-primary btn-large">
                 프롬프트 생성
             </button>
@@ -73,12 +87,14 @@
 // localStorage 키
 const STORAGE_KEY = 'ai_prompt_result';
 const TOPIC_STORAGE_KEY = 'ai_prompt_topic';
+const PROMPT_TYPE_STORAGE_KEY = 'ai_prompt_type';
 
 // 결과를 localStorage에 저장
-function saveResult(topic, result) {
+function saveResult(topic, result, promptType) {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(result));
         localStorage.setItem(TOPIC_STORAGE_KEY, topic);
+        localStorage.setItem(PROMPT_TYPE_STORAGE_KEY, promptType);
     } catch (e) {
         console.warn('localStorage 저장 실패:', e);
     }
@@ -89,10 +105,11 @@ function loadResult() {
     try {
         const savedResult = localStorage.getItem(STORAGE_KEY);
         const savedTopic = localStorage.getItem(TOPIC_STORAGE_KEY);
+        const savedPromptType = localStorage.getItem(PROMPT_TYPE_STORAGE_KEY);
         
         if (savedResult && savedTopic) {
             const result = JSON.parse(savedResult);
-            return { topic: savedTopic, result: result };
+            return { topic: savedTopic, result: result, promptType: savedPromptType || 'video' };
         }
     } catch (e) {
         console.warn('localStorage 로드 실패:', e);
@@ -130,12 +147,25 @@ document.addEventListener('DOMContentLoaded', () => {
     const saved = loadResult();
     if (saved) {
         topicInput.value = saved.topic;
+        if (saved.promptType) {
+            const promptTypeRadio = document.querySelector(`input[name="prompt-type"][value="${saved.promptType}"]`);
+            if (promptTypeRadio) {
+                promptTypeRadio.checked = true;
+            }
+        }
         displayResult(saved.result);
     } else {
         // 결과는 없지만 주제만 저장되어 있을 수 있음
         const savedTopic = localStorage.getItem(TOPIC_STORAGE_KEY);
         if (savedTopic) {
             topicInput.value = savedTopic;
+        }
+        const savedPromptType = localStorage.getItem(PROMPT_TYPE_STORAGE_KEY);
+        if (savedPromptType) {
+            const promptTypeRadio = document.querySelector(`input[name="prompt-type"][value="${savedPromptType}"]`);
+            if (promptTypeRadio) {
+                promptTypeRadio.checked = true;
+            }
         }
     }
     
@@ -148,6 +178,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
     
+    // 프롬프트 타입 변경 시 자동 저장
+    document.querySelectorAll('input[name="prompt-type"]').forEach(radio => {
+        radio.addEventListener('change', () => {
+            try {
+                localStorage.setItem(PROMPT_TYPE_STORAGE_KEY, radio.value);
+            } catch (e) {
+                console.warn('프롬프트 타입 저장 실패:', e);
+            }
+        });
+    });
+    
     // Enter 키로 생성
     topicInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') {
@@ -158,6 +199,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // 생성 버튼 클릭
     generateBtn.addEventListener('click', async () => {
         const topic = topicInput.value.trim();
+        const promptType = document.querySelector('input[name="prompt-type"]:checked')?.value || 'video';
         
         if (!topic) {
             showToast('주제를 입력해주세요', 'error');
@@ -175,7 +217,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ topic })
+                body: JSON.stringify({ topic, prompt_type: promptType })
             });
             
             const result = await response.json();
@@ -185,7 +227,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 displayResult(result.data);
                 
                 // localStorage에 저장
-                saveResult(topic, result.data);
+                saveResult(topic, result.data, promptType);
                 
                 resultSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
                 showToast('프롬프트 생성 완료!', 'success');

@@ -52,18 +52,21 @@
             </div>
             <div class="form-group">
                 <label>출력 비율</label>
-                <div style="display: flex; gap: 12px; margin-top: 8px;">
-                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="9:16" style="flex: 1;">
+                <div style="display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap;">
+                    <button type="button" class="aspect-ratio-btn btn btn-secondary active" data-ratio="4:5" style="flex: 1; min-width: 120px;">
+                        4:5 (Instagram 세로형)
+                    </button>
+                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="9:16" style="flex: 1; min-width: 120px;">
                         9:16 (세로형)
                     </button>
-                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="16:9" style="flex: 1;">
+                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="16:9" style="flex: 1; min-width: 120px;">
                         16:9 (가로형)
                     </button>
-                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="1:1" style="flex: 1;">
+                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="1:1" style="flex: 1; min-width: 120px;">
                         1:1 (정사각형)
                     </button>
                 </div>
-                <small class="form-hint">세로가 짧은 영상은 검은색 여백(letterbox)이 추가됩니다</small>
+                <small class="form-hint">세로가 짧은 영상은 검은색 여백(letterbox)이 추가됩니다. Instagram은 4:5 ~ 16:9 비율만 지원합니다.</small>
             </div>
             <button id="merge-btn" class="btn btn-primary btn-large">
                 영상 병합 시작
@@ -280,9 +283,12 @@
                 e.dataTransfer.dropEffect = 'move';
                 
                 const afterElement = getDragAfterElement(rawList, e.clientY);
-                if (afterElement == null || !afterElement) {
-                    rawList.appendChild(draggedElement);
-                } else if (afterElement instanceof Node) {
+                if (!rawList) return; // rawList가 없으면 종료
+                if (afterElement == null || !afterElement || !(afterElement instanceof Node)) {
+                    if (draggedElement && draggedElement instanceof Node) {
+                        rawList.appendChild(draggedElement);
+                    }
+                } else if (afterElement instanceof Node && draggedElement instanceof Node) {
                     rawList.insertBefore(draggedElement, afterElement);
                 }
             });
@@ -336,10 +342,20 @@
             }
             
             const response = await fetch('/api/status');
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
             const status = await response.json();
             
-            document.getElementById('raw-count').textContent = status.raw_count || 0;
+            const rawCountEl = document.getElementById('raw-count');
+            if (rawCountEl) {
+                rawCountEl.textContent = status.raw_count || 0;
+            }
             const rawList = document.getElementById('raw-list');
+            if (!rawList) {
+                console.error('raw-list 요소를 찾을 수 없습니다');
+                return;
+            }
             if (status.raw_videos && status.raw_videos.length > 0) {
                 let focusedFilename = null;
                 let focusedValue = '';
@@ -517,12 +533,17 @@
                 document.getElementById('result-section').style.display = 'none';
             }
         } catch (error) {
+            // 서버 연결 실패 시 조용히 실패 (서버가 시작되지 않았을 수 있음)
+            if (error.message && error.message.includes('Failed to fetch')) {
+                // 서버가 실행되지 않은 경우 조용히 실패
+                return;
+            }
             console.error('상태 업데이트 오류:', error);
         }
     }
 
     // 출력 비율 선택
-    let selectedAspectRatio = '9:16'; // 기본값
+    let selectedAspectRatio = '4:5'; // 기본값 (Instagram 호환)
     document.querySelectorAll('.aspect-ratio-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.aspect-ratio-btn').forEach(b => {
@@ -535,8 +556,8 @@
         });
     });
     // 기본값 선택
-    document.querySelector('.aspect-ratio-btn[data-ratio="9:16"]').classList.remove('btn-secondary');
-    document.querySelector('.aspect-ratio-btn[data-ratio="9:16"]').classList.add('btn-primary');
+    document.querySelector('.aspect-ratio-btn[data-ratio="4:5"]').classList.remove('btn-secondary');
+    document.querySelector('.aspect-ratio-btn[data-ratio="4:5"]').classList.add('btn-primary');
     
     document.getElementById('merge-btn').addEventListener('click', async () => {
         const btn = document.getElementById('merge-btn');
@@ -546,6 +567,11 @@
         // 현재 순서 가져오기
         loadVideoOrder();
         const rawList = document.getElementById('raw-list');
+        if (!rawList) {
+            console.error('raw-list 요소를 찾을 수 없습니다');
+            showToast('오류: 페이지 요소를 찾을 수 없습니다', 'error');
+            return;
+        }
         const items = rawList.querySelectorAll('.video-item');
         const currentOrder = Array.from(items).map(item => item.dataset.filename);
         
@@ -606,11 +632,14 @@
                 
                 // 병합 완료 확인 (폴링)
                 let checkCount = 0;
-                const maxChecks = 60; // 최대 60번 확인 (약 5분)
+                const maxChecks = 120; // 최대 120번 확인 (약 10분, 고화질 인코딩은 시간이 오래 걸릴 수 있음)
                 const checkInterval = setInterval(async () => {
                     checkCount++;
                     try {
                         const statusResponse = await fetch('/api/status');
+                        if (!statusResponse.ok) {
+                            throw new Error(`HTTP error! status: ${statusResponse.status}`);
+                        }
                         const status = await statusResponse.json();
                         
                         // 새로운 병합 파일이 생성되었는지 확인
@@ -622,15 +651,17 @@
                             btn.textContent = '영상 병합 시작';
                         } else if (checkCount >= maxChecks) {
                             clearInterval(checkInterval);
-                            showToast('병합이 완료되었을 수 있습니다', 'info');
+                            showToast('병합이 완료되었거나 실패했을 수 있습니다. 상태를 확인해주세요.', 'warning');
                             updateStatus();
                             btn.disabled = false;
                             btn.textContent = '영상 병합 시작';
                         }
                     } catch (e) {
                         console.error('상태 확인 오류:', e);
+                        // 서버 연결 실패는 조용히 처리 (서버가 재시작 중일 수 있음)
                         if (checkCount >= maxChecks) {
                             clearInterval(checkInterval);
+                            showToast('병합 상태 확인 중 오류가 발생했습니다. 서버를 확인해주세요.', 'error');
                             btn.disabled = false;
                             btn.textContent = '영상 병합 시작';
                         }
@@ -653,22 +684,22 @@
     const clearFilesBtn = document.getElementById('clear-files-btn');
     if (clearFilesBtn) {
         clearFilesBtn.addEventListener('click', async () => {
-            if (!confirm('모든 원본 영상을 /Users/sxxm/Documents/aiclips/vid로 이동하시겠습니까?')) {
+            if (!confirm('모든 원본 영상을 삭제하시겠습니까?')) {
                 return;
             }
 
             clearFilesBtn.disabled = true;
-            clearFilesBtn.textContent = '이동 중...';
+            clearFilesBtn.textContent = '삭제 중...';
 
             try {
                 const response = await fetch('/api/upload/video/clear', { method: 'POST' });
                 const result = await response.json();
                 
                 if (result.success) {
-                    showToast(result.message || '원본 영상이 모두 이동되었습니다', 'success');
+                    showToast(result.message || '원본 영상이 모두 삭제되었습니다', 'success');
                     updateStatus();
                 } else {
-                    showToast(result.message || '이동 실패', 'error');
+                    showToast(result.message || '삭제 실패', 'error');
                 }
             } catch (error) {
                 showToast('오류 발생: ' + error.message, 'error');

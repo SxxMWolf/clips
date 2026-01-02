@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 class VideoMerger:
     """영상 병합 클래스"""
     
-    def __init__(self, keyword: str = None, video_order: list = None, video_texts: dict = None, aspect_ratio: str = '9:16'):
+    def __init__(self, keyword: str = None, video_order: list = None, video_texts: dict = None, aspect_ratio: str = '4:5'):
         # 상위 디렉토리 기준으로 경로 설정
         BASE_DIR = Path(__file__).parent.parent
         self.raw_dir = BASE_DIR / "videos" / "raw"
@@ -174,16 +174,9 @@ class VideoMerger:
             logger.error("병합할 영상이 없습니다.")
             return False
         
-        if len(video_files) == 1:
-            logger.info("영상이 1개만 있어서 복사합니다.")
-            try:
-                import shutil
-                shutil.copy2(video_files[0], self.output_file)
-                logger.info(f"✅ 복사 완료: {self.output_file}")
-                return True
-            except Exception as e:
-                logger.error(f"복사 실패: {e}")
-                return False
+        # 영상이 1개여도 재인코딩 + 비율 보정 로직을 거쳐야 함
+        # (단순 복사 시 aspect_ratio, scale, pad 적용이 안 됨)
+        # 따라서 이 분기를 제거하고 아래 재인코딩 로직을 공통으로 사용
         
         # concat 파일 생성
         concat_file = self.create_concat_file(video_files)
@@ -250,13 +243,22 @@ class VideoMerger:
                 # 각 영상을 동일한 형식으로 재인코딩
                 logger.info("각 영상을 동일 형식으로 재인코딩 중...")
                 for i, video_file in enumerate(video_files):
+                    # 임시 파일을 videos 디렉토리에 생성 (절대 경로 사용)
+                    temp_dir = self.raw_dir.parent
+                    temp_dir.mkdir(parents=True, exist_ok=True)
                     temp_file = tempfile.NamedTemporaryFile(
                         suffix='.mp4',
                         delete=False,
-                        dir=str(self.raw_dir.parent)
+                        dir=str(temp_dir)
                     )
                     temp_file.close()
-                    temp_files.append(Path(temp_file.name))
+                    temp_file_path = Path(temp_file.name)
+                    # 파일이 실제로 생성되었는지 확인
+                    if not temp_file_path.exists():
+                        logger.error(f"임시 파일 생성 실패: {temp_file_path}")
+                        raise Exception(f"임시 파일 생성 실패: {temp_file_path}")
+                    temp_files.append(temp_file_path)
+                    logger.debug(f"임시 파일 생성: {temp_file_path}")
                     
                     # 각 영상에 텍스트 오버레이 추가 (있는 경우)
                     video_filename = video_file.name
@@ -265,9 +267,13 @@ class VideoMerger:
                     # 비디오 필터 구성 (letterbox 방식)
                     # 영상 비율을 유지하면서 목표 비율에 맞춤
                     # 세로가 짧으면 상하단에 검은색 여백 추가
+                    # 목표 해상도로 강제 변환 (4:5 = 1080x1350, 9:16 = 1080x1920 등)
+                    # scale로 비율 유지하며 스케일링 후, pad로 정확히 목표 해상도로 맞춤
+                    # pad는 자동으로 목표 해상도로 맞춰주므로 추가 scale 불필요
                     video_filters = [
-                        f'scale={width}:{height}:force_original_aspect_ratio=decrease',  # 비율 유지하며 크기 조정
-                        f'pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:color=black'  # 검은색 여백 추가 (중앙 정렬)
+                        f'scale={width}:{height}:force_original_aspect_ratio=decrease:force_divisible_by=2',  # 비율 유지하며 크기 조정 (짝수로)
+                        f'pad={width}:{height}:({width}-iw)/2:({height}-ih)/2:color=black',  # 검은색 여백 추가 (중앙 정렬, 정확한 계산)
+                        f'scale={width}:{height}'  # 최종 해상도 강제 설정 (보장)
                     ]
                     
                     # 텍스트가 있으면 오버레이 추가
@@ -302,19 +308,21 @@ class VideoMerger:
                     vf_param = ','.join(video_filters)
                     
                     # 각 영상을 동일한 형식으로 재인코딩 (최고 화질 설정)
+                    # 목표 해상도로 강제 변환 (4:5 = 1080x1350 등)
+                    # pad 필터가 이미 목표 해상도로 맞춰주므로 -s 옵션 불필요 (충돌 방지)
                     encode_cmd = [
                         'ffmpeg',
                         '-i', str(video_file),
                         '-vf', vf_param,
                         '-c:v', 'libx264',
                         '-preset', 'veryslow',  # 최고 화질 (처리 시간은 오래 걸림)
-                        '-crf', '15',  # 15는 매우 고화질 (낮을수록 고화질, 0-51 범위)
+                        '-crf', '10',  # 10은 거의 무손실 수준의 고화질 (낮을수록 고화질, 0-51 범위, 10은 매우 고화질)
                         '-profile:v', 'high',  # High profile 사용
                         '-level', '4.2',  # H.264 레벨 (더 높은 레벨)
                         '-r', '30',
                         '-pix_fmt', 'yuv420p',
                         '-tune', 'film',  # 필름 콘텐츠 최적화
-                        '-x264-params', 'keyint=60:min-keyint=60:scenecut=0',  # 고품질 인코딩 파라미터
+                        '-x264-params', 'keyint=60:min-keyint=60:scenecut=0:aq-mode=3:aq-strength=1.0:merange=24:subme=10:trellis=2',  # 최고품질 인코딩 파라미터
                         '-c:a', 'aac',
                         '-b:a', '320k',  # 오디오 비트레이트 최대화
                         '-y',
@@ -332,9 +340,26 @@ class VideoMerger:
                         logger.error(f"영상 {i+1} 재인코딩 실패: {encode_result.stderr}")
                         raise Exception(f"영상 {i+1} 재인코딩 실패")
                     
-                    logger.info(f"영상 {i+1}/{len(video_files)} 재인코딩 완료")
+                    # 재인코딩된 파일이 실제로 존재하는지 확인
+                    if not temp_files[-1].exists():
+                        logger.error(f"재인코딩된 파일이 존재하지 않습니다: {temp_files[-1]}")
+                        raise Exception(f"재인코딩된 파일이 존재하지 않습니다: {temp_files[-1]}")
+                    
+                    file_size = temp_files[-1].stat().st_size / (1024 * 1024)  # MB
+                    logger.info(f"영상 {i+1}/{len(video_files)} 재인코딩 완료 (크기: {file_size:.2f} MB)")
                 
                 # 재인코딩된 파일들로 concat 파일 생성
+                # 모든 임시 파일이 존재하는지 먼저 확인
+                for temp_file in temp_files:
+                    if not temp_file.exists():
+                        logger.error(f"임시 파일이 존재하지 않습니다: {temp_file}")
+                        raise Exception(f"임시 파일이 존재하지 않습니다: {temp_file}")
+                    file_size = temp_file.stat().st_size
+                    if file_size == 0:
+                        logger.error(f"임시 파일이 비어있습니다: {temp_file}")
+                        raise Exception(f"임시 파일이 비어있습니다: {temp_file}")
+                    logger.debug(f"임시 파일 확인: {temp_file} (크기: {file_size / (1024*1024):.2f} MB)")
+                
                 concat_file_normalized = tempfile.NamedTemporaryFile(
                     mode='w',
                     suffix='.txt',
@@ -346,9 +371,11 @@ class VideoMerger:
                     abs_path = temp_file.resolve()
                     abs_path_str = str(abs_path).replace('\\', '/')
                     concat_file_normalized.write(f"file '{abs_path_str}'\n")
+                    logger.debug(f"Concat 파일에 추가: {abs_path_str}")
                 
                 concat_file_normalized.close()
                 concat_file_path = concat_file_normalized.name
+                logger.info(f"Concat 파일 생성: {concat_file_path}")
                 
                 # 재인코딩된 파일들을 concat (스트림 복사)
                 cmd = [

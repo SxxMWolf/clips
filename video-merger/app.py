@@ -215,35 +215,23 @@ def upload_video():
 
 @app.route('/api/upload/video/clear', methods=['POST'])
 def clear_videos():
-    """모든 업로드된 영상 파일을 /Users/sxxm/Documents/aiclips/vid로 이동"""
+    """모든 업로드된 영상 파일을 삭제"""
     try:
         raw_dir = Path("videos/raw")
-        destination_dir = Path("/Users/sxxm/Documents/aiclips/vid")
         
-        # 목적지 디렉토리가 없으면 생성
-        destination_dir.mkdir(parents=True, exist_ok=True)
-        
-        moved_count = 0
+        deleted_count = 0
         if raw_dir.exists():
             for file in raw_dir.glob("*.mp4"):
                 try:
-                    # 목적지로 파일 이동
-                    destination_path = destination_dir / file.name
-                    # 같은 이름의 파일이 있으면 타임스탬프 추가
-                    if destination_path.exists():
-                        import time
-                        timestamp = int(time.time())
-                        name_parts = file.stem, timestamp, file.suffix
-                        destination_path = destination_dir / f"{name_parts[0]}_{name_parts[1]}{name_parts[2]}"
-                    shutil.move(str(file), str(destination_path))
-                    moved_count += 1
+                    file.unlink()  # 파일 삭제
+                    deleted_count += 1
                 except Exception as e:
-                    # 개별 파일 이동 실패 시 로그만 남기고 계속 진행
-                    logger.error(f"파일 이동 실패 {file.name}: {e}")
+                    # 개별 파일 삭제 실패 시 로그만 남기고 계속 진행
+                    logger.error(f"파일 삭제 실패 {file.name}: {e}")
         
         return jsonify({
             'success': True,
-            'message': f'{moved_count}개의 파일이 /Users/sxxm/Documents/aiclips/vid로 이동되었습니다.'
+            'message': f'{deleted_count}개의 파일이 삭제되었습니다.'
         })
     except Exception as e:
         return jsonify({
@@ -342,6 +330,7 @@ def generate_ai_prompt():
     try:
         data = request.json
         topic = data.get('topic', '').strip()
+        prompt_type = data.get('prompt_type', 'video')  # 'video' 또는 'cat_travel'
         
         if not topic:
             return jsonify({
@@ -350,7 +339,7 @@ def generate_ai_prompt():
             }), 400
         
         prompt_generator = PromptGenerator()
-        result = prompt_generator.generate_prompt(topic)
+        result = prompt_generator.generate_prompt(topic, prompt_type=prompt_type)
         
         return jsonify({
             'success': True,
