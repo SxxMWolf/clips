@@ -108,7 +108,7 @@ def merge_videos():
     """영상 병합 실행"""
     try:
         data = request.json or {}
-        keyword = data.get('keyword', '').strip()
+        keyword = (data.get('keyword') or '').strip() if data.get('keyword') else ''
         video_order = data.get('video_order')  # 사용자가 지정한 순서
         video_texts = data.get('video_texts')  # 각 영상의 하단 텍스트
         aspect_ratio = data.get('aspect_ratio', '9:16')  # 출력 비율 (기본값: 9:16)

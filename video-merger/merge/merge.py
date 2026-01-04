@@ -403,28 +403,6 @@ class VideoMerger:
                     file_size = self.output_file.stat().st_size / (1024 * 1024)  # MB
                     logger.info(f"✅ 영상 병합 완료: {self.output_file}")
                     logger.info(f"   파일 크기: {file_size:.2f} MB")
-                    
-                    # 병합된 영상을 지정된 경로로 복사 후 이동 (상태 확인을 위해 복사 후 이동)
-                    destination_dir = Path("/Users/sxxm/Documents/aiclips/meow/무제 폴더")
-                    destination_dir.mkdir(parents=True, exist_ok=True)
-                    destination_file = destination_dir / self.output_file.name
-                    
-                    try:
-                        # 먼저 복사 (상태 API가 파일을 확인할 수 있도록)
-                        shutil.copy2(str(self.output_file), str(destination_file))
-                        logger.info(f"✅ 영상 복사 완료: {destination_file}")
-                        
-                        # 잠시 대기 (상태 API가 파일을 확인할 수 있도록)
-                        import time
-                        time.sleep(1)
-                        
-                        # 그 다음 원본 삭제 (이동 완료)
-                        self.output_file.unlink()
-                        logger.info(f"✅ 원본 파일 삭제 완료: {self.output_file}")
-                    except Exception as e:
-                        logger.error(f"❌ 영상 이동 실패: {e}")
-                        # 이동 실패해도 병합은 성공했으므로 True 반환
-                    
                     return True
                 else:
                     logger.error(f"❌ FFmpeg 병합 실패:")
