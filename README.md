@@ -4,8 +4,10 @@
 
 ## 주요 기능
 
-- ✅ **영상 병합**: 여러 영상을 하나로 병합 (드래그 앤 드롭 지원)
+- ✅ **영상 병합**: 여러 영상을 하나로 병합 (드래그 앤 드롭, 순서 조정, 텍스트 오버레이 지원)
 - ✅ **AI 프롬프트 생성**: 주제를 입력하면 바이럴 프롬프트, 훅, 해시태그 자동 생성
+  - **asmr**: ASMR 영상용 프롬프트 (4:5 비율)
+  - **meow**: 3고양이 여행 이미지용 프롬프트 (극사실주의 스타일)
 - ✅ **AI 클립 생성**: YouTube 영상에서 바이럴 잠재력이 높은 클립 자동 생성
 - ✅ **웹 인터페이스**: 직관적인 웹 UI로 모든 기능 사용 가능
 
@@ -77,36 +79,55 @@ python3 app.py
 
 - 드래그 앤 드롭으로 영상 파일 추가
 - 드래그로 영상 순서 조정
-- 각 영상에 상단 텍스트 오버레이 추가 (4초 동안 표시)
-- 출력 비율 선택 (9:16, 16:9, 1:1)
-- 키워드 기반 파일명 생성
-- 원본 영상 비우기 기능
+- 각 영상에 상단 텍스트 오버레이 추가 (4초 동안 표시, 흰색 글씨 + 검은색 테두리)
+- 출력 비율 선택 (4:5, 9:16, 16:9, 1:1)
+- 키워드 기반 파일명 생성 (예: `keyword_timestamp.mp4`)
+- 원본 영상 비우기 기능 (삭제)
+- 고화질 출력 (CRF 10, veryslow preset)
 
 **사용 방법:**
 1. "영상 병합" 페이지 접속
 2. 영상 파일을 드래그 앤 드롭 또는 클릭하여 선택
-3. 각 영상의 상단 텍스트 입력 (선택사항)
-4. 출력 비율 선택
-5. 키워드 입력 (선택사항)
-6. "영상 병합 시작" 버튼 클릭
+3. 드래그로 영상 순서 조정 (선택사항)
+4. 각 영상의 상단 텍스트 입력 (선택사항)
+5. 출력 비율 선택 (기본값: 4:5)
+6. 키워드 입력 (선택사항, 파일명으로 사용)
+7. "영상 병합 시작" 버튼 클릭
+8. 병합 완료 후 `videos/final/` 폴더에서 확인
 
 ### 2. AI 프롬프트 생성
 
 주제를 입력하면 AI가 다음을 자동 생성:
 - **AI Video/Image Prompt**: 주제를 영어로 번역한 프롬프트
 - **Hook Caption**: 댓글을 유도하는 훅 캡션
-- **Viral Hashtags**: 바이럴 잠재력이 높은 해시태그 (15-25개)
+- **Viral Hashtags**: 바이럴 잠재력이 높은 해시태그 (5개)
+
+**프롬프트 타입:**
+
+**1. asmr (ASMR 영상용)**
+- ASMR 중심 영상 프롬프트 생성
+- 형식: `This is [주제]. Make an asmr-focused video with no music. Quality should be hd and as long as possible. In 4:5 aspect ratio.`
+- 훅 캡션: 댓글 유도 질문 포함
+- 해시태그: #fyp + 주제 관련 4개
+
+**2. meow (3고양이 여행 이미지용)**
+- 극사실주의 여행 사진 프롬프트 생성
+- 형식: `An ultra-realistic professional travel photograph of three specific cats: one orange tabby, one calico, and one black-and-white tuxedo. They are all wearing small, detailed tan tactical backpacks. They are [주제 기반 활동]. High resolution, 8k, cinematic lighting, sharp focus on their faces, adventure photography style.`
+- 캡션: 캐주얼한 일기 스타일 (예: "we are at disneyland! it was fun! what ride should we go on next?")
+- 해시태그: #fyp + 장소 + #cats + #travel + 국가
 
 **특징:**
-- 주제에 따라 ASMR 또는 시네마틱 스타일 자동 선택
+- 프롬프트 타입 선택 가능 (asmr / meow)
 - 크레딧 멘트 자동 추가 (옵션)
-- 필수 해시태그 자동 포함 (#fyp, #viral, #trending, #shorts, #foryou)
+- 필수 해시태그 자동 포함 (#fyp)
+- 입력값 자동 저장 (페이지 이동 시 유지)
 
 **사용 방법:**
 1. "AI 프롬프트" 페이지 접속
-2. 주제 입력 (예: "체리 캔디 슬라임")
-3. "Generate Prompt" 버튼 클릭
-4. 생성된 프롬프트, 캡션, 해시태그 복사
+2. 프롬프트 타입 선택 (asmr 또는 meow)
+3. 주제 입력 (예: "체리 캔디 슬라임" 또는 "상하이 디즈니랜드 방문")
+4. "프롬프트 생성" 버튼 클릭
+5. 생성된 프롬프트, 캡션, 해시태그 복사
 
 ### 3. AI 클립 생성
 

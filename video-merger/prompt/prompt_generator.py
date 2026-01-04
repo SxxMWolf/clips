@@ -191,46 +191,57 @@ Return JSON format:
             
         Returns:
             {
-                "video_prompt": "One orange tabby cat, one calico cat, one tuxedo cat, all wearing canvas backpacks. [주제 내용]. Make it cute and funny.",
+                "video_prompt": "One orange tabby cat, one calico cat, one tuxedo cat, all wearing canvas backpacks. [주제 내용] (최대 4줄)",
                 "hook_caption": "...",
                 "hashtags": ["#tag1", "#tag2", ...]
             }
         """
         logger.info(f"3고양이 여행 프롬프트 생성 시작: {topic}")
         
-        system_prompt = """You are a professional AI image prompt creator specializing in cute and viral content.
+        system_prompt = """You are a professional AI image prompt creator specializing in ultra-realistic travel photography.
 
-IMPORTANT CONTEXT: This prompt is specifically for creating IMAGES of three traveling cats. The image will feature:
+IMPORTANT CONTEXT: This prompt is specifically for creating ultra-realistic professional travel photographs of three specific cats:
 - One orange tabby cat
 - One calico cat  
-- One tuxedo cat
-- All three cats wearing canvas backpacks
+- One black-and-white tuxedo cat
+- All three cats wearing small, detailed tan tactical backpacks
 - The cats are traveling around the world to various destinations
 
 When given a travel topic, generate:
-1. An English AI IMAGE PROMPT that describes the travel scene or location where the three cats are visiting. This should be:
-   - A clear, engaging description of the travel destination or activity
-   - Focused on what makes the scene interesting, cute, and visually appealing
-   - Simple and suitable for AI image generation
-   - Just describe the travel destination/activity that the three cats are experiencing
+1. A description that fills in "[Doing what and where]" based on the given topic. This should be:
+   - A clear, concise description of what the three cats are doing and where they are
+   - Based on the given topic, describe the activity and location
+   - Keep it simple: one sentence or phrase that describes the action and location
+   - Example: "exploring the Eiffel Tower in Paris" or "enjoying street food in Tokyo"
+   - Just translate and describe the topic naturally in English
    
-2. A short hook-style caption that makes people like and engage with the post. The caption MUST include a question that engages viewers. Examples:
-   - "Which destination would you visit first?"
-   - "Where should the cats go next?"
-   - "What's your dream travel destination?"
-   The hook should present a choice or question that encourages engagement.
+2. A casual, diary-style caption written as if the three cats are posting about their day. It should sound like a real travel diary entry. Examples:
+   - "we are at disneyland! it was fun! what ride should we go on next?"
+   - "just arrived in paris! the eiffel tower is amazing! where should we go next?"
+   - "tokyo is so cool! we tried ramen and it was delicious! what should we do tomorrow?"
+   The caption should:
+   - Be written in lowercase (casual style)
+   - Express excitement about the current location/activity
+   - End with a simple question about what to do next
+   - Sound natural and genuine, like a real social media post
    
-3. Exactly 5 relevant hashtags for TikTok/Reels/Shorts
+3. Exactly 5 simple, relevant hashtags
 
-IMPORTANT: The hashtags MUST ALWAYS include #fyp as the first hashtag. Then add exactly 4 additional relevant hashtags related to travel, cats, or the specific destination.
+IMPORTANT: The hashtags MUST ALWAYS include #fyp as the first hashtag. Then add exactly 4 additional simple hashtags:
+   - One hashtag for the specific location (e.g., #ShanghaiDisneyland, #Paris, #Tokyo)
+   - #cats
+   - #travel
+   - One hashtag for the country or region (e.g., #China, #France, #Japan)
+   
+Keep hashtags simple and straightforward, no long phrases.
 
-Focus on content that is cute, funny, and could go viral. The hook caption should always end with a question or choice that makes viewers want to comment.
+Focus on content that is cute, fun, and engaging. The caption should sound like a real travel diary entry written by the cats themselves.
 
 Return JSON format:
 {
-  "travel_description": "Description of the travel scene or destination for the three cats",
-  "hook_caption": "Short hook caption with engaging question here",
-  "hashtags": ["#fyp", "#tag1", "#tag2", "#tag3", "#tag4"]
+  "activity_description": "What the three cats are doing and where (e.g., 'exploring the Eiffel Tower in Paris' or 'enjoying street food in Tokyo')",
+  "hook_caption": "Casual diary-style caption in lowercase, like 'we are at disneyland! it was fun! what ride should we go on next?'",
+  "hashtags": ["#fyp", "#location", "#cats", "#travel", "#country"]
 }"""
 
         user_prompt = f"Travel topic: {topic}\n\nGenerate the travel description, hook caption, and viral hashtags for a cute image of three traveling cats."
@@ -289,12 +300,12 @@ Return JSON format:
                     hook_caption = f"{hook_caption}\n\n{credit_text}"
             
             # 3고양이 여행 프롬프트 생성
-            travel_description = result.get("travel_description", topic).strip()
+            activity_description = result.get("activity_description", topic).strip()
             
-            # 프롬프트 형식: 맨 앞 + 여행 설명 + 맨 뒤
-            cat_prompt = "One orange tabby cat, one calico cat, one tuxedo cat, all wearing canvas backpacks. "
-            cat_prompt += travel_description
-            cat_prompt += ". Make it cute and funny."
+            # 새로운 프롬프트 형식
+            cat_prompt = "An ultra-realistic professional travel photograph of three specific cats: one orange tabby, one calico, and one black-and-white tuxedo. They are all wearing small, detailed tan tactical backpacks. They are "
+            cat_prompt += activity_description
+            cat_prompt += ". High resolution, 8k, cinematic lighting, sharp focus on their faces, adventure photography style."
             
             return {
                 "video_prompt": cat_prompt,
@@ -309,7 +320,7 @@ Return JSON format:
             if add_credit:
                 hook_caption_fallback += "\n\ninspired by pinterest. please dm me for credits"
             
-            fallback_prompt = f"One orange tabby cat, one calico cat, one tuxedo cat, all wearing canvas backpacks. {topic}. Make it cute and funny."
+            fallback_prompt = f"An ultra-realistic professional travel photograph of three specific cats: one orange tabby, one calico, and one black-and-white tuxedo. They are all wearing small, detailed tan tactical backpacks. They are {topic}. High resolution, 8k, cinematic lighting, sharp focus on their faces, adventure photography style."
             
             return {
                 "video_prompt": fallback_prompt,
