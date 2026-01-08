@@ -111,14 +111,15 @@ def merge_videos():
         keyword = (data.get('keyword') or '').strip() if data.get('keyword') else ''
         video_order = data.get('video_order')  # 사용자가 지정한 순서
         video_texts = data.get('video_texts')  # 각 영상의 하단 텍스트
-        aspect_ratio = data.get('aspect_ratio', '9:16')  # 출력 비율 (기본값: 9:16)
+        aspect_ratio = data.get('aspect_ratio', '4:5')  # 출력 비율 (기본값: 4:5)
+        add_letterbox = data.get('add_letterbox', True)  # letterbox 추가 여부 (기본값: True)
         
         # video_order가 빈 리스트이거나 None이면 None으로 설정
         if video_order and len(video_order) == 0:
             video_order = None
         
         try:
-            merger = VideoMerger(keyword=keyword if keyword else None, video_order=video_order, video_texts=video_texts, aspect_ratio=aspect_ratio)
+            merger = VideoMerger(keyword=keyword if keyword else None, video_order=video_order, video_texts=video_texts, aspect_ratio=aspect_ratio, add_letterbox=add_letterbox)
         except Exception as e:
             logger.error(f"VideoMerger 초기화 오류: {e}")
             logger.error(f"상세 오류: {traceback.format_exc()}")

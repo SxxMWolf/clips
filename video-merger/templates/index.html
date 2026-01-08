@@ -73,15 +73,31 @@
             const mergedSize = document.getElementById('merged-size');
             const mergedPreview = document.getElementById('merged-preview');
             
-            if (status.merged_exists) {
+            if (status.merged_exists && status.latest_merged) {
                 mergedStatus.textContent = '준비됨';
                 mergedStatus.style.color = '#fff';
                 mergedSize.textContent = `크기: ${status.merged_size} MB`;
-                mergedPreview.innerHTML = `
-                    <video controls style="width: 100%; border-radius: 10px; max-height: 300px;">
-                        <source src="/videos/short.mp4" type="video/mp4">
-                    </video>
-                `;
+                
+                // 기존 비디오 확인
+                const existingVideo = mergedPreview.querySelector('video');
+                const existingSource = existingVideo ? existingVideo.querySelector('source') : null;
+                const currentSrc = existingSource ? existingSource.getAttribute('src') : '';
+                const newSrc = `/videos/${status.latest_merged}`;
+                
+                // 파일명이 변경되었거나 비디오가 없을 때만 업데이트
+                // 파일명에서 쿼리 파라미터 제거하여 비교
+                const currentFilename = currentSrc ? currentSrc.split('?')[0].split('/').pop() : '';
+                const newFilename = status.latest_merged;
+                
+                if (currentFilename !== newFilename) {
+                    // 캐시 방지를 위한 타임스탬프 추가
+                    const timestamp = new Date().getTime();
+                    mergedPreview.innerHTML = `
+                        <video controls style="width: 100%; border-radius: 10px; max-height: 300px;">
+                            <source src="${newSrc}?t=${timestamp}" type="video/mp4">
+                        </video>
+                    `;
+                }
             } else {
                 mergedStatus.textContent = '없음';
                 mergedStatus.style.color = '#999';

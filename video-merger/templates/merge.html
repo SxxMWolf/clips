@@ -10,7 +10,7 @@
     </header>
 
     <section class="merge-section">
-        <div class="status-card">
+        <div class="status-card merge-left">
             <h3>원본 영상 목록</h3>
             
             <!-- 드래그 앤 드롭 업로드 영역 -->
@@ -37,7 +37,7 @@
             </button>
         </div>
 
-        <div class="form-card">
+        <div class="form-card merge-right">
             <h3>병합 설정</h3>
             <div class="form-group">
                 <label for="keyword-input">영상 키워드 (파일명으로 사용)</label>
@@ -66,7 +66,14 @@
                         1:1 (정사각형)
                     </button>
                 </div>
-                <small class="form-hint">세로가 짧은 영상은 검은색 여백(letterbox)이 추가됩니다. Instagram은 4:5 ~ 16:9 비율만 지원합니다.</small>
+                <small class="form-hint">Instagram은 4:5 ~ 16:9 비율만 지원합니다.</small>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
+                    <input type="checkbox" id="add-letterbox" checked style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);">
+                    <span>위아래 검은색 여백 추가 (letterbox)</span>
+                </label>
+                <small class="form-hint">체크 시 비율에 맞지 않는 영상에 위아래 검은색 여백을 추가합니다. 체크하지 않으면 영상이 늘어나거나 잘릴 수 있습니다.</small>
             </div>
             <button id="merge-btn" class="btn btn-primary btn-large">
                 영상 병합 시작
@@ -74,13 +81,13 @@
             <p class="help-text">모든 원본 영상이 파일명 순서대로 병합됩니다</p>
         </div>
 
-        <div class="status-card" id="result-section" style="display: none;">
-            <h3>병합 결과</h3>
-            <div id="merged-info"></div>
-            <div id="merged-preview" class="video-preview"></div>
-        </div>
-
     </section>
+
+    <div class="status-card" id="result-section" style="display: none;">
+        <h3>병합 결과</h3>
+        <div id="merged-info"></div>
+        <div id="merged-preview" class="video-preview"></div>
+    </div>
 </div>
 {% endblock %}
 
@@ -518,17 +525,37 @@
             }
             
             if (status.merged_exists && status.latest_merged) {
-                document.getElementById('result-section').style.display = 'block';
-                document.getElementById('merged-info').innerHTML = `
+                const resultSection = document.getElementById('result-section');
+                const mergedInfo = document.getElementById('merged-info');
+                const mergedPreview = document.getElementById('merged-preview');
+                
+                resultSection.style.display = 'block';
+                mergedInfo.innerHTML = `
                     <div>병합 완료</div>
                     <div>파일명: ${status.latest_merged}</div>
                     <div>크기: ${status.merged_size} MB</div>
                 `;
-                document.getElementById('merged-preview').innerHTML = `
-                    <video controls style="width: 100%; border-radius: 10px; max-height: 400px;">
-                        <source src="/videos/${status.latest_merged}" type="video/mp4">
-                    </video>
-                `;
+                
+                // 기존 비디오 확인
+                const existingVideo = mergedPreview.querySelector('video');
+                const existingSource = existingVideo ? existingVideo.querySelector('source') : null;
+                const currentSrc = existingSource ? existingSource.getAttribute('src') : '';
+                const newSrc = `/videos/${status.latest_merged}`;
+                
+                // 파일명이 변경되었거나 비디오가 없을 때만 업데이트
+                // 파일명에서 쿼리 파라미터 제거하여 비교
+                const currentFilename = currentSrc ? currentSrc.split('?')[0].split('/').pop() : '';
+                const newFilename = status.latest_merged;
+                
+                if (currentFilename !== newFilename) {
+                    // 캐시 방지를 위한 타임스탬프 추가
+                    const timestamp = new Date().getTime();
+                    mergedPreview.innerHTML = `
+                        <video controls style="width: 100%; border-radius: 10px; max-height: 400px;">
+                            <source src="${newSrc}?t=${timestamp}" type="video/mp4">
+                        </video>
+                    `;
+                }
             } else {
                 document.getElementById('result-section').style.display = 'none';
             }
@@ -617,7 +644,8 @@
                     keyword: keyword || null,
                     video_order: orderToUse.length > 0 ? orderToUse : null,
                     video_texts: Object.keys(currentVideoTexts).length > 0 ? currentVideoTexts : null,
-                    aspect_ratio: selectedAspectRatio
+                    aspect_ratio: selectedAspectRatio,
+                    add_letterbox: document.getElementById('add-letterbox').checked
                 })
             });
             const result = await response.json();
@@ -646,7 +674,13 @@
                         if (status.latest_merged && status.latest_merged !== latestFileBefore) {
                             clearInterval(checkInterval);
                             showToast('병합이 완료되었습니다', 'success');
-                            updateStatus();
+                            // 상태 업데이트 후 비디오 강제 재로드
+                            await updateStatus();
+                            // 비디오 요소 강제 재로드
+                            const video = document.querySelector('#merged-preview video');
+                            if (video) {
+                                video.load();
+                            }
                             btn.disabled = false;
                             btn.textContent = '영상 병합 시작';
                             return;

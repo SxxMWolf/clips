@@ -219,6 +219,19 @@ body {
     margin-bottom: 32px;
 }
 
+/* 병합 섹션 - 좌우 배치 */
+.merge-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin-bottom: 32px;
+}
+
+.merge-left,
+.merge-right {
+    margin-bottom: 0;
+}
+
 /* 빠른 작업 */
 .quick-actions {
     margin-top: 48px;
@@ -749,5 +762,11 @@ textarea.form-control {
     
     .platform-checkbox {
         min-width: 100%;
+    }
+    
+    /* 병합 섹션 - 모바일에서는 세로 배치 */
+    .merge-section {
+        grid-template-columns: 1fr;
+        gap: 16px;
     }
 }

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 class VideoMerger:
     """영상 병합 클래스"""
     
-    def __init__(self, keyword: str = None, video_order: list = None, video_texts: dict = None, aspect_ratio: str = '4:5'):
+    def __init__(self, keyword: str = None, video_order: list = None, video_texts: dict = None, aspect_ratio: str = '4:5', add_letterbox: bool = True):
         # 상위 디렉토리 기준으로 경로 설정
         BASE_DIR = Path(__file__).parent.parent
         self.raw_dir = BASE_DIR / "videos" / "raw"
@@ -30,6 +30,7 @@ class VideoMerger:
         self.video_order = video_order  # 사용자가 지정한 순서
         self.video_texts = video_texts or {}  # 각 영상의 하단 텍스트 {filename: text}
         self.aspect_ratio = aspect_ratio  # 출력 비율 (예: '9:16', '16:9', '1:1')
+        self.add_letterbox = add_letterbox  # letterbox 추가 여부
         
         # 키워드 기반 파일명 생성
         if keyword:
@@ -265,17 +266,22 @@ class VideoMerger:
                     video_filename = video_file.name
                     text_overlay = self.video_texts.get(video_filename, '')
                     
-                    # 비디오 필터 구성 (letterbox 방식)
-                    # 영상 비율을 유지하면서 목표 비율에 맞춤
-                    # 세로가 짧으면 상하단에 검은색 여백 추가
-                    # 목표 해상도로 강제 변환 (4:5 = 1080x1350, 9:16 = 1080x1920 등)
-                    # scale로 비율 유지하며 스케일링 후, pad로 정확히 목표 해상도로 맞춤
-                    # pad는 자동으로 목표 해상도로 맞춰주므로 추가 scale 불필요
-                    video_filters = [
-                        f'scale={width}:{height}:force_original_aspect_ratio=decrease:force_divisible_by=2',  # 비율 유지하며 크기 조정 (짝수로)
-                        f'pad={width}:{height}:({width}-iw)/2:({height}-ih)/2:color=black',  # 검은색 여백 추가 (중앙 정렬, 정확한 계산)
-                        f'scale={width}:{height}'  # 최종 해상도 강제 설정 (보장)
-                    ]
+                    # 비디오 필터 구성
+                    if self.add_letterbox:
+                        # letterbox 방식: 영상 비율을 유지하면서 목표 비율에 맞춤
+                        # 세로가 짧으면 상하단에 검은색 여백 추가
+                        # 목표 해상도로 강제 변환 (4:5 = 1080x1350, 9:16 = 1080x1920 등)
+                        # scale로 비율 유지하며 스케일링 후, pad로 정확히 목표 해상도로 맞춤
+                        video_filters = [
+                            f'scale={width}:{height}:force_original_aspect_ratio=decrease:force_divisible_by=2',  # 비율 유지하며 크기 조정 (짝수로)
+                            f'pad={width}:{height}:({width}-iw)/2:({height}-ih)/2:color=black',  # 검은색 여백 추가 (중앙 정렬, 정확한 계산)
+                            f'scale={width}:{height}'  # 최종 해상도 강제 설정 (보장)
+                        ]
+                    else:
+                        # letterbox 없이: 영상을 목표 비율로 강제 늘림 (비율 왜곡 가능)
+                        video_filters = [
+                            f'scale={width}:{height}:force_divisible_by=2'  # 목표 해상도로 강제 스케일링
+                        ]
                     
                     # 텍스트가 있으면 오버레이 추가
                     if text_overlay:
