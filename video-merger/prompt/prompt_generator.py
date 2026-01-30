@@ -31,12 +31,12 @@ Your goal is to generate a Commercial-grade ASMR video prompt based on the user'
 
 STRICT RULES (Do not deviate):
 1.  **Format**: JSON ONLY. No markdown, no explanations.
-2.  **Camera**: 9:16 Vertical, Front facing, No movement, Extreme macro close-up (lips & mouth only), Blurred background (shallow depth of field, soft bokeh).
+2.  **Camera**: 9:16 Vertical, Strictly Front-facing (Directly from front), No movement, Extreme macro close-up (lips & mouth only), Blurred background.
 3.  **Subject**: Female, Red glossy lipstick, Catchlight on lips/food. Commercial-grade.
 4.  **Action**: Video MUST START with food entering mouth. Always front-facing. Chews vigorously, slow-motion chewing.
 5.  **Physics**: Subsurface Scattering, Viscosity/Elasticity, Micro-moisture (oil/gloss).
 6.  **Sound Visuals**: Crunch/Crack/Shatter/Stretch/Juice burst. Visualized sound.
-7.  **Lighting**: Studio lighting, Cinematic rim light, High contrast.
+7.  **Lighting**: Bright Studio lighting, High-key lighting, Cinematic rim light, High contrast, Well-lit.
 8.  **Audio**: High-fidelity ASMR audio, Clear close-up chewing, Wet/Sticky/Crunchy textures, Binaural. NO music/vocals.
 9.  **Quality**: Ultra-realistic, 8K, Lifelike motion.
 10. **Hashtags**: MUST include: #rainbow #mukbang #asmr #candy #chewingsounds
@@ -130,8 +130,8 @@ OUTPUT FORMAT (JSON ONLY):
                         )
 
                 hook_caption = result.get("hook_caption", "")
-                if add_credit:
-                    hook_caption += "\n\n(inspired by pinterest. dm for credits)"
+                # if add_credit:
+                #    hook_caption += "\n\n(inspired by pinterest. dm for credits)"
 
                 return {
                     "video_prompt": video_prompt,
@@ -164,7 +164,7 @@ OUTPUT FORMAT (JSON ONLY):
                 f"9:16 vertical format, highly detailed, trending on artstation. "
                 "(Note: API quota exceeded, using generic prompt)"
             ),
-            "hook_caption": f"{topic} ✨\n\n(via Pinterest)",
+            "hook_caption": f"{topic} ✨",
             "hashtags": ["#fyp", "#viral", "#trending", "#shorts", "#video"]
         }
 
