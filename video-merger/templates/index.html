@@ -17,7 +17,7 @@
             </div>
             <div id="raw-list" class="file-list"></div>
         </div>
-        
+
         <div class="status-card">
             <h3>병합된 영상</h3>
             <div class="status-info">
@@ -36,11 +36,7 @@
                 <h3>영상 병합</h3>
                 <p>여러 영상을 하나로 병합</p>
             </a>
-            <a href="{{ url_for('ai_clip_page') }}" class="action-card">
-                <div class="action-icon"></div>
-                <h3>AI 클립 생성</h3>
-                <p>YouTube에서 바이럴 클립 자동 생성</p>
-            </a>
+
             <a href="{{ url_for('ai_prompt_page') }}" class="action-card">
                 <div class="action-icon"></div>
                 <h3>AI 프롬프트</h3>
@@ -58,37 +54,37 @@
         try {
             const response = await fetch('/api/status');
             const status = await response.json();
-            
+
             document.getElementById('raw-count').textContent = status.raw_count || 0;
             const rawList = document.getElementById('raw-list');
             if (status.raw_videos && status.raw_videos.length > 0) {
-                rawList.innerHTML = status.raw_videos.map(video => 
+                rawList.innerHTML = status.raw_videos.map(video =>
                     `<div>${video}</div>`
                 ).join('');
             } else {
                 rawList.innerHTML = '<div style="color: #999;">영상이 없습니다</div>';
             }
-            
+
             const mergedStatus = document.getElementById('merged-status');
             const mergedSize = document.getElementById('merged-size');
             const mergedPreview = document.getElementById('merged-preview');
-            
+
             if (status.merged_exists && status.latest_merged) {
                 mergedStatus.textContent = '준비됨';
                 mergedStatus.style.color = '#fff';
                 mergedSize.textContent = `크기: ${status.merged_size} MB`;
-                
+
                 // 기존 비디오 확인
                 const existingVideo = mergedPreview.querySelector('video');
                 const existingSource = existingVideo ? existingVideo.querySelector('source') : null;
                 const currentSrc = existingSource ? existingSource.getAttribute('src') : '';
                 const newSrc = `/videos/${status.latest_merged}`;
-                
+
                 // 파일명이 변경되었거나 비디오가 없을 때만 업데이트
                 // 파일명에서 쿼리 파라미터 제거하여 비교
                 const currentFilename = currentSrc ? currentSrc.split('?')[0].split('/').pop() : '';
                 const newFilename = status.latest_merged;
-                
+
                 if (currentFilename !== newFilename) {
                     // 캐시 방지를 위한 타임스탬프 추가
                     const timestamp = new Date().getTime();

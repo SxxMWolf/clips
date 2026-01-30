@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from merge.merge import VideoMerger
 from prompt.prompt_generator import PromptGenerator
 import requests
+import re
 
 # 로거 설정
 logger = logging.getLogger(__name__)
@@ -44,10 +45,7 @@ def merge_page():
     return render_template('merge.html')
 
 
-@app.route('/ai-clip')
-def ai_clip_page():
-    """AI 클립 생성 페이지"""
-    return render_template('ai_clip.html')
+
 
 
 @app.route('/ai-prompt')
@@ -192,8 +190,21 @@ def upload_video():
         # 업로드 순서를 타임스탬프로 저장
         import time
         timestamp = int(time.time() * 1000)  # 밀리초 단위
-        from werkzeug.utils import secure_filename
-        filename = f"{timestamp:015d}_{secure_filename(file.filename)}"
+        # safe_name = secure_filename(file.filename)
+        # secure_filename은 한글을 지원하지 않으므로 커스텀 정제 로직 사용
+        filename_base = os.path.basename(file.filename)
+        # 허용 문자: 영문, 숫자, 한글, 공백, ., -, _
+        safe_name = re.sub(r'[^\w\s\.\-_]', '', filename_base).strip()
+        
+        # 모든 문자가 제거되어 확장자만 남거나 비어있는 경우 처리
+        if not safe_name or safe_name == '.mp4':
+            safe_name = 'video.mp4'
+            
+        # .mp4 확장자 보장
+        if not safe_name.lower().endswith('.mp4'):
+             safe_name = f"{safe_name}.mp4"
+                
+        filename = f"{timestamp:015d}_{safe_name}"
         
         raw_dir = Path("videos/raw")
         raw_dir.mkdir(parents=True, exist_ok=True)
@@ -247,82 +258,7 @@ def serve_video(filename):
     return send_from_directory('videos/final', filename)
 
 
-# AI 클리핑 API 엔드포인트 (FastAPI 프록시)
-AI_API_BASE = "http://localhost:8000"
 
-def handle_ai_api_error(e):
-    """AI API 에러 처리 헬퍼"""
-    return jsonify({
-        'success': False,
-        'message': f'오류 발생: {str(e)}'
-    }), 500
-
-def proxy_ai_request(method, endpoint, **kwargs):
-    """FastAPI 서버로 요청 프록시"""
-    try:
-        url = f"{AI_API_BASE}{endpoint}"
-        if method == 'GET':
-            response = requests.get(url, timeout=30, **kwargs)
-        elif method == 'POST':
-            response = requests.post(url, timeout=30, **kwargs)
-        else:
-            raise ValueError(f"지원하지 않는 HTTP 메서드: {method}")
-        return jsonify(response.json())
-    except Exception as e:
-        return handle_ai_api_error(e)
-
-@app.route('/api/ai/import-youtube', methods=['POST'])
-def ai_import_youtube():
-    """YouTube 영상 다운로드 (AI 클리핑용)"""
-    data = request.json
-    url = data.get('url')
-    prompt = data.get('prompt', 'Find the most engaging and viral moments')
-    
-    if not url:
-        return jsonify({
-            'success': False,
-            'message': 'YouTube URL이 필요합니다.'
-        }), 400
-    
-    return proxy_ai_request('POST', '/api/video/import/youtube', json={"url": url, "prompt": prompt})
-
-
-@app.route('/api/ai/video-status/<video_id>')
-def ai_video_status(video_id):
-    """비디오 처리 상태 확인"""
-    return proxy_ai_request('GET', f'/api/video/status/{video_id}')
-
-
-@app.route('/api/ai/generate-clips', methods=['POST'])
-def ai_generate_clips():
-    """AI 클립 생성"""
-    data = request.json
-    video_id = data.get('video_id')
-    prompt = data.get('prompt', 'Find the most engaging and viral moments')
-    
-    if not video_id:
-        return jsonify({
-            'success': False,
-            'message': 'video_id가 필요합니다.'
-        }), 400
-    
-    return proxy_ai_request('POST', '/api/video/generate-clips', json={"video_id": video_id, "prompt": prompt})
-
-
-@app.route('/api/ai/clips/<video_id>')
-def ai_get_clips(video_id):
-    """생성된 클립 목록 조회"""
-    return proxy_ai_request('GET', f'/api/clips/{video_id}')
-
-
-@app.route('/api/ai/clip/file/<video_id>/<filename>')
-def ai_serve_clip(video_id, filename):
-    """AI 생성 클립 파일 제공"""
-    clip_file = Path(f"videos/clips/{video_id}/{filename}")
-    if clip_file.exists():
-        return send_from_directory(f'videos/clips/{video_id}', filename)
-    else:
-        return jsonify({'error': 'File not found'}), 404
 
 
 @app.route('/api/ai/generate-prompt', methods=['POST'])
@@ -357,9 +293,7 @@ if __name__ == '__main__':
     # 디렉토리 생성
     Path("videos/raw").mkdir(parents=True, exist_ok=True)
     Path("videos/final").mkdir(parents=True, exist_ok=True)
-    Path("videos/downloads").mkdir(parents=True, exist_ok=True)
-    Path("videos/clips").mkdir(parents=True, exist_ok=True)
-    Path("transcripts").mkdir(parents=True, exist_ok=True)
+
     Path("templates").mkdir(exist_ok=True)
     Path("static").mkdir(exist_ok=True)
     
