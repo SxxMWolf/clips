@@ -1,23 +1,23 @@
 {% extends "base.html" %}
 
-{% block title %}영상 병합 - Video Clips{% endblock %}
+{% block title %}Merge Videos - Video Clips{% endblock %}
 
 {% block content %}
 <div class="page-container">
     <header class="page-header">
-        <h1>영상 병합</h1>
-        <p class="subtitle">videos/raw/ 폴더의 영상들을 하나로 병합합니다</p>
+        <h1>Merge Videos</h1>
+        <p class="subtitle">Merge several videos into one</p>
     </header>
 
     <section class="merge-section">
         <div class="status-card merge-left">
-            <h3>원본 영상 목록</h3>
-            
-            <!-- 드래그 앤 드롭 업로드 영역 -->
+            <h3>Source Video List</h3>
+
+            <!-- Drag and Drop Upload Area -->
             <div id="drop-zone" class="drop-zone" style="margin-bottom: 20px;">
                 <div class="drop-zone-content">
-                    <p class="drop-zone-text">영상 파일을 여기에 드래그하거나 클릭하여 선택하세요</p>
-                    <p class="drop-zone-hint">MP4 파일만 지원됩니다</p>
+                    <p class="drop-zone-text">Drag and drop video files here or click to select</p>
+                    <p class="drop-zone-hint">Only MP4 files are supported</p>
                     <input type="file" id="file-input" multiple accept="video/mp4" style="display: none;">
                 </div>
             </div>
@@ -25,66 +25,68 @@
                 <div class="progress-bar">
                     <div id="progress-fill" class="progress-fill"></div>
                 </div>
-                <p id="progress-text" class="progress-text">업로드 중...</p>
+                <p id="progress-text" class="progress-text">Uploading...</p>
             </div>
-            
+
             <div id="raw-list" class="file-list"></div>
             <div class="status-info">
-                총 <span id="raw-count">0</span> 개
+                Total <span id="raw-count">0</span>
             </div>
             <button id="clear-files-btn" class="btn btn-secondary" style="margin-top: 15px; display: none;">
-                비우기
+                Clear
             </button>
         </div>
 
         <div class="form-card merge-right">
-            <h3>병합 설정</h3>
+            <h3>Merge Settings</h3>
             <div class="form-group">
-                <label for="keyword-input">영상 키워드 (파일명으로 사용)</label>
-                <input 
-                    type="text" 
-                    id="keyword-input" 
-                    class="form-control" 
-                    placeholder="예: AI_미래_예측"
-                    autocomplete="off"
-                >
-                <small class="form-hint">키워드를 입력하면 해당 이름으로 저장됩니다. 비워두면 자동으로 생성됩니다.</small>
+                <label for="keyword-input">Video Keyword (used for filename)</label>
+                <input type="text" id="keyword-input" class="form-control" placeholder="e.g. AI_Future_Prediction"
+                    autocomplete="off">
+                <small class="form-hint">Filename will be saved with this keyword. If empty, it will be
+                    auto-generated.</small>
             </div>
             <div class="form-group">
-                <label>출력 비율</label>
+                <label>Output Aspect Ratio</label>
                 <div style="display: flex; gap: 12px; margin-top: 8px; flex-wrap: wrap;">
-                    <button type="button" class="aspect-ratio-btn btn btn-secondary active" data-ratio="4:5" style="flex: 1; min-width: 120px;">
-                        4:5 (Instagram 세로형)
+                    <button type="button" class="aspect-ratio-btn btn btn-secondary active" data-ratio="4:5"
+                        style="flex: 1; min-width: 120px;">
+                        4:5 (Instagram Portrait)
                     </button>
-                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="9:16" style="flex: 1; min-width: 120px;">
-                        9:16 (세로형)
+                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="9:16"
+                        style="flex: 1; min-width: 120px;">
+                        9:16 (Vertical)
                     </button>
-                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="16:9" style="flex: 1; min-width: 120px;">
-                        16:9 (가로형)
+                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="16:9"
+                        style="flex: 1; min-width: 120px;">
+                        16:9 (Landscape)
                     </button>
-                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="1:1" style="flex: 1; min-width: 120px;">
-                        1:1 (정사각형)
+                    <button type="button" class="aspect-ratio-btn btn btn-secondary" data-ratio="1:1"
+                        style="flex: 1; min-width: 120px;">
+                        1:1 (Square)
                     </button>
                 </div>
-                <small class="form-hint">Instagram은 4:5 ~ 16:9 비율만 지원합니다.</small>
+                <small class="form-hint">Instagram supports 4:5 to 16:9 aspect ratios.</small>
             </div>
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 8px; cursor: pointer;">
-                    <input type="checkbox" id="add-letterbox" checked style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);">
-                    <span>위아래 검은색 여백 추가 (letterbox)</span>
+                    <input type="checkbox" id="add-letterbox" checked
+                        style="width: 18px; height: 18px; cursor: pointer; accent-color: var(--accent);">
+                    <span>Add black bars (letterbox)</span>
                 </label>
-                <small class="form-hint">체크 시 비율에 맞지 않는 영상에 위아래 검은색 여백을 추가합니다. 체크하지 않으면 영상이 늘어나거나 잘릴 수 있습니다.</small>
+                <small class="form-hint">If checked, adds black bars (letterbox) to fit the aspect ratio. If unchecked,
+                    video may be stretched or cropped.</small>
             </div>
             <button id="merge-btn" class="btn btn-primary btn-large">
-                영상 병합 시작
+                Start Merge
             </button>
-            <p class="help-text">모든 원본 영상이 파일명 순서대로 병합됩니다</p>
+            <p class="help-text">All source videos will be merged in filename order</p>
         </div>
 
     </section>
 
     <div class="status-card" id="result-section" style="display: none;">
-        <h3>병합 결과</h3>
+        <h3>Merge Result</h3>
         <div id="merged-info"></div>
         <div id="merged-preview" class="video-preview"></div>
     </div>
@@ -93,36 +95,36 @@
 
 {% block scripts %}
 <script>
-    // 드래그 앤 드롭 기능
+    // Drag and Drop
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
     const uploadProgress = document.getElementById('upload-progress');
     const progressFill = document.getElementById('progress-fill');
     const progressText = document.getElementById('progress-text');
 
-    // 드롭 존 클릭
+    // Click drop zone
     if (dropZone && fileInput) {
         dropZone.addEventListener('click', () => {
             fileInput.click();
         });
 
-        // 파일 선택
+        // File select
         fileInput.addEventListener('change', (e) => {
             handleFiles(e.target.files);
         });
 
-        // 드래그 오버
+        // Drag over
         dropZone.addEventListener('dragover', (e) => {
             e.preventDefault();
             dropZone.classList.add('drag-over');
         });
 
-        // 드래그 리브
+        // Drag leave
         dropZone.addEventListener('dragleave', () => {
             dropZone.classList.remove('drag-over');
         });
 
-        // 드롭
+        // Drop
         dropZone.addEventListener('drop', (e) => {
             e.preventDefault();
             dropZone.classList.remove('drag-over');
@@ -130,14 +132,14 @@
         });
     }
 
-    // 파일 처리
+    // Handle files
     async function handleFiles(files) {
-        const videoFiles = Array.from(files).filter(file => 
+        const videoFiles = Array.from(files).filter(file =>
             file.type.startsWith('video/') && file.name.toLowerCase().endsWith('.mp4')
         );
 
         if (videoFiles.length === 0) {
-            showToast('MP4 영상 파일만 업로드 가능합니다', 'error');
+            showToast('Only MP4 video files are allowed', 'error');
             return;
         }
 
@@ -148,7 +150,7 @@
             progressFill.style.width = '0%';
         }
         if (progressText) {
-            progressText.textContent = '업로드 준비 중...';
+            progressText.textContent = 'Preparing upload...';
         }
 
         let uploaded = 0;
@@ -173,18 +175,18 @@
                         progressFill.style.width = progress + '%';
                     }
                     if (progressText) {
-                        progressText.textContent = `업로드 중... ${uploaded}/${total}`;
+                        progressText.textContent = `Uploading... ${uploaded}/${total}`;
                     }
                 } else {
-                    showToast(`${file.name} 업로드 실패: ${result.message}`, 'error');
+                    showToast(`${file.name} Upload failed: ${result.message}`, 'error');
                 }
             } catch (error) {
-                showToast(`${file.name} 업로드 실패: ${error.message}`, 'error');
+                showToast(`${file.name} Upload failed: ${error.message}`, 'error');
             }
         }
 
         if (uploaded > 0) {
-            showToast(`${uploaded}개 파일이 업로드되었습니다`, 'success');
+            showToast(`${uploaded} files uploaded`, 'success');
             setTimeout(() => {
                 if (uploadProgress) {
                     uploadProgress.style.display = 'none';
@@ -198,16 +200,16 @@
         }
     }
 
-    // 영상 순서 저장 (localStorage)
+    // Video Order Storage (localStorage)
     let videoOrder = [];
-    
-    // 영상 텍스트 저장 (localStorage)
+
+    // Video Text Storage (localStorage)
     let videoTexts = {};
-    
+
     function saveVideoOrder() {
         localStorage.setItem('video_merge_order', JSON.stringify(videoOrder));
     }
-    
+
     function loadVideoOrder() {
         const saved = localStorage.getItem('video_merge_order');
         if (saved) {
@@ -218,9 +220,9 @@
             }
         }
     }
-    
+
     function saveVideoTexts() {
-        // 현재 입력된 텍스트들을 저장
+        // Save currently input texts
         const rawList = document.getElementById('raw-list');
         if (rawList) {
             const inputs = rawList.querySelectorAll('.video-caption-input');
@@ -236,7 +238,7 @@
         }
         localStorage.setItem('video_merge_texts', JSON.stringify(videoTexts));
     }
-    
+
     function loadVideoTexts() {
         const saved = localStorage.getItem('video_merge_texts');
         if (saved) {
@@ -247,9 +249,9 @@
             }
         }
     }
-    
+
     function restoreVideoTexts() {
-        // 저장된 텍스트를 입력 필드에 복원
+        // Restore saved text to input fields
         const rawList = document.getElementById('raw-list');
         if (rawList) {
             const inputs = rawList.querySelectorAll('.video-caption-input');
@@ -261,36 +263,36 @@
             });
         }
     }
-    
+
     function makeSortable() {
         const rawList = document.getElementById('raw-list');
         if (!rawList) return;
-        
-        // Sortable 기능 구현
+
+        // Sortable implementation
         let draggedElement = null;
-        
+
         const items = rawList.querySelectorAll('.video-item');
         items.forEach(item => {
             item.draggable = true;
             item.style.cursor = 'move';
-            
+
             item.addEventListener('dragstart', (e) => {
                 draggedElement = item;
                 item.classList.add('dragging');
                 e.dataTransfer.effectAllowed = 'move';
             });
-            
+
             item.addEventListener('dragend', () => {
                 item.classList.remove('dragging');
                 draggedElement = null;
             });
-            
+
             item.addEventListener('dragover', (e) => {
                 e.preventDefault();
                 e.dataTransfer.dropEffect = 'move';
-                
+
                 const afterElement = getDragAfterElement(rawList, e.clientY);
-                if (!rawList) return; // rawList가 없으면 종료
+                if (!rawList) return;
                 if (afterElement == null || !afterElement || !(afterElement instanceof Node)) {
                     if (draggedElement && draggedElement instanceof Node) {
                         rawList.appendChild(draggedElement);
@@ -299,38 +301,38 @@
                     rawList.insertBefore(draggedElement, afterElement);
                 }
             });
-            
+
             item.addEventListener('drop', (e) => {
                 e.preventDefault();
                 updateVideoOrder();
             });
         });
     }
-    
+
     function getDragAfterElement(container, y) {
         const draggableElements = [...container.querySelectorAll('.video-item:not(.dragging)')];
-        
+
         const result = draggableElements.reduce((closest, child) => {
             const box = child.getBoundingClientRect();
             const offset = y - box.top - box.height / 2;
-            
+
             if (offset < 0 && offset > closest.offset) {
                 return { offset: offset, element: child };
             } else {
                 return closest;
             }
         }, { offset: Number.NEGATIVE_INFINITY });
-        
+
         return result.element || null;
     }
-    
+
     function updateVideoOrder() {
         const rawList = document.getElementById('raw-list');
         const items = rawList.querySelectorAll('.video-item');
         videoOrder = Array.from(items).map(item => item.dataset.filename);
         saveVideoOrder();
-        
-        // 번호 업데이트
+
+        // Update numbers
         items.forEach((item, index) => {
             const numberSpan = item.querySelector('.video-number');
             if (numberSpan) {
@@ -338,37 +340,37 @@
             }
         });
     }
-    
+
     async function updateStatus() {
         try {
-            // 입력 필드가 포커스되어 있으면 업데이트 건너뛰기
+            // Updated check: if input field is focused, skip update
             const activeElement = document.activeElement;
             const isInputFocused = activeElement && activeElement.classList && activeElement.classList.contains('video-caption-input');
             if (isInputFocused || isAnyInputFocused) {
-                return; // 포커스되어 있으면 완전히 건너뛰기
+                return; // Skip completely if focused
             }
-            
+
             const response = await fetch('/api/status');
             if (!response.ok) {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const status = await response.json();
-            
+
             const rawCountEl = document.getElementById('raw-count');
             if (rawCountEl) {
                 rawCountEl.textContent = status.raw_count || 0;
             }
             const rawList = document.getElementById('raw-list');
             if (!rawList) {
-                console.error('raw-list 요소를 찾을 수 없습니다');
+                console.error('raw-list element not found');
                 return;
             }
             if (status.raw_videos && status.raw_videos.length > 0) {
                 let focusedFilename = null;
                 let focusedValue = '';
                 let cursorPosition = 0;
-                
-                // 포커스된 입력 필드의 현재 값과 커서 위치 저장
+
+                // Save current value and cursor position of focused input
                 if (isInputFocused) {
                     focusedFilename = activeElement.dataset.filename;
                     focusedValue = activeElement.value;
@@ -378,8 +380,8 @@
                         saveVideoTexts();
                     }
                 }
-                
-                // 현재 모든 입력 필드의 값 저장 (포커스되지 않은 필드도)
+
+                // Save all input field values (even non-focused ones)
                 const existingInputs = rawList.querySelectorAll('.video-caption-input');
                 existingInputs.forEach(input => {
                     const filename = input.dataset.filename;
@@ -387,33 +389,33 @@
                         videoTexts[filename] = input.value;
                     }
                 });
-                
-                // 저장된 순서가 있으면 사용, 없으면 서버 순서 사용
+
+                // Use saved order if exists, otherwise server order
                 loadVideoOrder();
-                
-                // 저장된 순서와 현재 파일 목록 비교하여 유효한 순서만 사용
-                const validOrder = videoOrder.filter(filename => 
+
+                // Compare saved order with current file list, use only valid order
+                const validOrder = videoOrder.filter(filename =>
                     status.raw_videos.includes(filename)
                 );
-                const newFiles = status.raw_videos.filter(filename => 
+                const newFiles = status.raw_videos.filter(filename =>
                     !videoOrder.includes(filename)
                 );
-                
-                // 유효한 순서 + 새 파일들
+
+                // Valid order + new files
                 const orderedVideos = [...validOrder, ...newFiles];
-                
-                // 저장된 텍스트 로드 (포커스된 필드는 현재 값 유지)
+
+                // Load saved texts (focused field keeps current value)
                 loadVideoTexts();
                 if (focusedFilename && focusedValue) {
                     videoTexts[focusedFilename] = focusedValue;
                 }
-                
-                // 파일명에서 타임스탬프 제거하여 표시
+
+                // Remove timestamp from filename for display
                 rawList.innerHTML = orderedVideos.map((video, i) => {
                     const displayName = video.includes('_') ? video.split('_').slice(1).join('_') : video;
                     const videoId = `video-${i}`;
                     const savedText = videoTexts[video] || '';
-                    // HTML 이스케이프 처리
+                    // HTML Escape
                     const escapedText = savedText
                         .replace(/&/g, '&amp;')
                         .replace(/</g, '&lt;')
@@ -443,10 +445,10 @@
                                 ">⋮⋮</span>
                             </div>
                             <div style="margin-top: 8px;">
-                                <textarea 
-                                    id="${videoId}" 
-                                    class="video-caption-input form-control" 
-                                    placeholder="하단에 표시할 텍스트 (선택사항)&#10;Shift+Enter로 줄바꿈"
+                                <textarea
+                                    id="${videoId}"
+                                    class="video-caption-input form-control"
+                                    placeholder="Text to display at bottom (optional)&#10;Shift+Enter for newline"
                                     data-filename="${video}"
                                     rows="2"
                                     style="width: 100%; font-size: 13px; padding: 8px; resize: vertical; min-height: 40px;"
@@ -456,18 +458,18 @@
                         </div>
                     `;
                 }).join('');
-                
-                // 입력 필드에 이벤트 리스너 추가 (텍스트 저장)
+
+                // Add event listeners to inputs (save text)
                 const textInputs = rawList.querySelectorAll('.video-caption-input');
                 textInputs.forEach(input => {
-                    // Enter 키는 기본 동작(제출) 방지, Shift+Enter는 줄바꿈 허용
+                    // Prevent Enter key default (submit), allow Shift+Enter for newline
                     input.addEventListener('keydown', (e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
-                            e.preventDefault(); // Enter만 누르면 제출 방지
+                            e.preventDefault();
                         }
-                        // Shift+Enter는 기본 동작(줄바꿈) 허용
+                        // Shift+Enter allows default behavior (newline)
                     });
-                    
+
                     input.addEventListener('input', (e) => {
                         const filename = e.target.dataset.filename;
                         if (filename) {
@@ -483,72 +485,74 @@
                         }
                     });
                 });
-                
-                // 포커스가 있었던 입력 필드로 다시 포커스
+
+                // Refocus if input was focused
                 if (isInputFocused && focusedFilename) {
                     const restoredInput = rawList.querySelector(`.video-caption-input[data-filename="${focusedFilename}"]`);
                     if (restoredInput) {
-                        // 약간의 지연 후 포커스 (DOM 업데이트 완료 후)
+                        // Delay slightly to focus after DOM update
                         setTimeout(() => {
                             restoredInput.focus();
-                            // 커서를 저장된 위치로 이동
+                            // Move cursor to saved position
                             const maxPosition = restoredInput.value.length;
                             const pos = Math.min(cursorPosition, maxPosition);
                             restoredInput.setSelectionRange(pos, pos);
                         }, 50);
                     }
                 }
-                
-                // videoOrder 업데이트
+
+                // Update videoOrder
                 videoOrder = orderedVideos;
                 saveVideoOrder();
-                
-                
-                // Sortable 기능 활성화
+
+
+                // Enable Sortable
                 setTimeout(() => makeSortable(), 100);
-                
-                // 비우기 버튼 표시
+
+                // Show Clear button
                 const clearFilesBtn = document.getElementById('clear-files-btn');
                 if (clearFilesBtn) {
                     clearFilesBtn.style.display = 'block';
                 }
             } else {
-                rawList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px 0;">영상이 없습니다</div>';
+                rawList.innerHTML = '<div style="color: var(--text-muted); text-align: center; padding: 20px 0;">No videos</div>';
                 videoOrder = [];
                 saveVideoOrder();
-                
-                // 비우기 버튼 숨기기
+
+                // Hide Clear button
                 const clearFilesBtn = document.getElementById('clear-files-btn');
                 if (clearFilesBtn) {
                     clearFilesBtn.style.display = 'none';
                 }
             }
-            
+
             if (status.merged_exists && status.latest_merged) {
                 const resultSection = document.getElementById('result-section');
                 const mergedInfo = document.getElementById('merged-info');
                 const mergedPreview = document.getElementById('merged-preview');
-                
+
                 resultSection.style.display = 'block';
                 mergedInfo.innerHTML = `
-                    <div>병합 완료</div>
-                    <div>파일명: ${status.latest_merged}</div>
-                    <div>크기: ${status.merged_size} MB</div>
+                    <div style="margin-bottom: 8px;">Merge Complete</div>
+                    <div style="margin-bottom: 4px;">Filename: ${status.latest_merged}</div>
+                    <div style="margin-bottom: 12px;">Size: ${status.merged_size} MB</div>
+                    <a href="/api/download/${status.latest_merged}" class="btn btn-primary" style="text-decoration: none; display: inline-block;">
+                        Download Video
+                    </a>
                 `;
-                
-                // 기존 비디오 확인
+
+                // Check existing video
                 const existingVideo = mergedPreview.querySelector('video');
                 const existingSource = existingVideo ? existingVideo.querySelector('source') : null;
                 const currentSrc = existingSource ? existingSource.getAttribute('src') : '';
                 const newSrc = `/videos/${status.latest_merged}`;
-                
-                // 파일명이 변경되었거나 비디오가 없을 때만 업데이트
-                // 파일명에서 쿼리 파라미터 제거하여 비교
+
+                // Update only if filename changed or no video
                 const currentFilename = currentSrc ? currentSrc.split('?')[0].split('/').pop() : '';
                 const newFilename = status.latest_merged;
-                
+
                 if (currentFilename !== newFilename) {
-                    // 캐시 방지를 위한 타임스탬프 추가
+                    // Add timestamp to prevent caching
                     const timestamp = new Date().getTime();
                     mergedPreview.innerHTML = `
                         <video controls style="width: 100%; border-radius: 10px; max-height: 400px;">
@@ -560,17 +564,16 @@
                 document.getElementById('result-section').style.display = 'none';
             }
         } catch (error) {
-            // 서버 연결 실패 시 조용히 실패 (서버가 시작되지 않았을 수 있음)
+            // Silently fail on server connection error (server might be restarting)
             if (error.message && error.message.includes('Failed to fetch')) {
-                // 서버가 실행되지 않은 경우 조용히 실패
                 return;
             }
-            console.error('상태 업데이트 오류:', error);
+            console.error('Status update error:', error);
         }
     }
 
-    // 출력 비율 선택
-    let selectedAspectRatio = '4:5'; // 기본값 (Instagram 호환)
+    // Aspect Ratio Selection
+    let selectedAspectRatio = '4:5'; // Default (Instagram compatible)
     document.querySelectorAll('.aspect-ratio-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             document.querySelectorAll('.aspect-ratio-btn').forEach(b => {
@@ -582,27 +585,27 @@
             selectedAspectRatio = btn.dataset.ratio;
         });
     });
-    // 기본값 선택
+    // Select default
     document.querySelector('.aspect-ratio-btn[data-ratio="4:5"]').classList.remove('btn-secondary');
     document.querySelector('.aspect-ratio-btn[data-ratio="4:5"]').classList.add('btn-primary');
-    
+
     document.getElementById('merge-btn').addEventListener('click', async () => {
         const btn = document.getElementById('merge-btn');
         const keywordInput = document.getElementById('keyword-input');
         const keyword = keywordInput.value.trim();
-        
-        // 현재 순서 가져오기
+
+        // Get current order
         loadVideoOrder();
         const rawList = document.getElementById('raw-list');
         if (!rawList) {
-            console.error('raw-list 요소를 찾을 수 없습니다');
-            showToast('오류: 페이지 요소를 찾을 수 없습니다', 'error');
+            console.error('raw-list element not found');
+            showToast('Error: Page element not found', 'error');
             return;
         }
         const items = rawList.querySelectorAll('.video-item');
         const currentOrder = Array.from(items).map(item => item.dataset.filename);
-        
-        // 각 영상의 텍스트 가져오기
+
+        // Get text for each video
         const currentVideoTexts = {};
         items.forEach(item => {
             const filename = item.dataset.filename;
@@ -614,33 +617,33 @@
                 }
             }
         });
-        
-        // 순서가 있으면 사용, 없으면 서버 순서 사용
+
+        // Use current order if exists, otherwise saved order
         const orderToUse = currentOrder.length > 0 ? currentOrder : videoOrder;
-        
+
         btn.disabled = true;
-        btn.textContent = '병합 중...';
-        
-        // 병합 시작 알림
-        showToast('병합을 시작합니다', 'info');
-        
-        // 병합 전 최신 파일 확인
+        btn.textContent = 'Merging...';
+
+        // Notify start
+        showToast('Starting merge...', 'info');
+
+        // Check latest file before merge
         let latestFileBefore = null;
         try {
             const statusResponse = await fetch('/api/status');
             const status = await statusResponse.json();
             latestFileBefore = status.latest_merged;
         } catch (e) {
-            console.warn('상태 확인 실패:', e);
+            console.warn('Status check failed:', e);
         }
-        
+
         try {
-            const response = await fetch('/api/merge', { 
+            const response = await fetch('/api/merge', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ 
+                body: JSON.stringify({
                     keyword: keyword || null,
                     video_order: orderToUse.length > 0 ? orderToUse : null,
                     video_texts: Object.keys(currentVideoTexts).length > 0 ? currentVideoTexts : null,
@@ -649,18 +652,18 @@
                 })
             });
             const result = await response.json();
-            
+
             if (result.success) {
-                keywordInput.value = ''; // 키워드 입력 필드 초기화
-                // 병합 후 순서 및 텍스트 초기화
+                keywordInput.value = ''; // Reset keyword input
+                // Reset order and texts after merge
                 videoOrder = [];
                 videoTexts = {};
                 saveVideoOrder();
                 saveVideoTexts();
-                
-                // 병합 완료 확인 (폴링)
+
+                // Polling for completion
                 let checkCount = 0;
-                const maxChecks = 120; // 최대 120번 확인 (약 10분)
+                const maxChecks = 120; // Max 120 checks (approx 10 mins)
                 const checkInterval = setInterval(async () => {
                     checkCount++;
                     try {
@@ -669,102 +672,111 @@
                             throw new Error(`HTTP error! status: ${statusResponse.status}`);
                         }
                         const status = await statusResponse.json();
-                        
-                        // 새로운 병합 파일이 생성되었는지 확인
+
+                        // Check if new merged file created
                         if (status.latest_merged && status.latest_merged !== latestFileBefore) {
                             clearInterval(checkInterval);
-                            showToast('병합이 완료되었습니다', 'success');
-                            // 상태 업데이트 후 비디오 강제 재로드
+                            showToast('Merge complete!', 'success');
+
+                            // Try to save file using File System Access API
+                            try {
+                                await saveMergedVideo(status.latest_merged);
+                            } catch (e) {
+                                console.error('Auto save failed:', e);
+                                showToast('Auto save failed, please use download button', 'warning');
+                            }
+
+                            // Update status and reload video
                             await updateStatus();
-                            // 비디오 요소 강제 재로드
+                            // Force reload video element
                             const video = document.querySelector('#merged-preview video');
                             if (video) {
                                 video.load();
                             }
                             btn.disabled = false;
-                            btn.textContent = '영상 병합 시작';
+                            btn.textContent = 'Start Merge';
                             return;
                         }
-                        
+
                         if (checkCount >= maxChecks) {
                             clearInterval(checkInterval);
-                            showToast('병합이 완료되었거나 실패했을 수 있습니다. 상태를 확인해주세요.', 'warning');
+                            showToast('Merge may be complete or failed. Please check status.', 'warning');
                             updateStatus();
                             btn.disabled = false;
-                            btn.textContent = '영상 병합 시작';
+                            btn.textContent = 'Start Merge';
                         }
                     } catch (e) {
-                        console.error('상태 확인 오류:', e);
-                        // 서버 연결 실패는 조용히 처리 (서버가 재시작 중일 수 있음)
+                        console.error('Status check error:', e);
+                        // Silently handle server connection failure
                         if (checkCount >= maxChecks) {
                             clearInterval(checkInterval);
-                            showToast('병합 상태 확인 중 오류가 발생했습니다. 서버를 확인해주세요.', 'error');
+                            showToast('Error checking status. Please check server.', 'error');
                             btn.disabled = false;
-                            btn.textContent = '영상 병합 시작';
+                            btn.textContent = 'Start Merge';
                         }
                     }
-                }, 5000); // 5초마다 확인
-                
+                }, 5000); // Check every 5 seconds
+
             } else {
-                showToast('병합 실패', 'error');
+                showToast('Merge failed', 'error');
                 btn.disabled = false;
-                btn.textContent = '영상 병합 시작';
+                btn.textContent = 'Start Merge';
             }
         } catch (error) {
-            showToast('오류 발생: ' + error.message, 'error');
+            showToast('Error: ' + error.message, 'error');
             btn.disabled = false;
-            btn.textContent = '영상 병합 시작';
+            btn.textContent = 'Start Merge';
         }
     });
 
-    // 원본 영상 비우기
+    // Clear source videos
     const clearFilesBtn = document.getElementById('clear-files-btn');
     if (clearFilesBtn) {
         clearFilesBtn.addEventListener('click', async () => {
-            if (!confirm('모든 원본 영상을 삭제하시겠습니까?')) {
-                return;
-            }
+            // if (!confirm('Are you sure you want to delete all source videos?')) {
+            //    return;
+            // }
 
             clearFilesBtn.disabled = true;
-            clearFilesBtn.textContent = '삭제 중...';
+            clearFilesBtn.textContent = 'Deleting...';
 
             try {
                 const response = await fetch('/api/upload/video/clear', { method: 'POST' });
                 const result = await response.json();
-                
+
                 if (result.success) {
-                    showToast(result.message || '원본 영상이 모두 삭제되었습니다', 'success');
+                    showToast(result.message || 'All source videos deleted', 'success');
                     updateStatus();
                 } else {
-                    showToast(result.message || '삭제 실패', 'error');
+                    showToast(result.message || 'Delete failed', 'error');
                 }
             } catch (error) {
-                showToast('오류 발생: ' + error.message, 'error');
+                showToast('Error: ' + error.message, 'error');
             } finally {
                 clearFilesBtn.disabled = false;
-                clearFilesBtn.textContent = '비우기';
+                clearFilesBtn.textContent = 'Clear';
             }
         });
     }
 
-    // 입력 필드가 포커스되어 있는지 추적
+    // Input focus tracking
     let isAnyInputFocused = false;
     let focusedInputElement = null;
-    
+
     document.addEventListener('DOMContentLoaded', () => {
         updateStatus();
-        
-        // 입력 필드 포커스 추적 (전역 이벤트 리스너)
+
+        // Track input focus (global listener)
         document.addEventListener('focusin', (e) => {
             if (e.target.classList && e.target.classList.contains('video-caption-input')) {
                 isAnyInputFocused = true;
                 focusedInputElement = e.target;
             }
-        }, true); // capture phase에서 처리
-        
+        }, true); // capture phase
+
         document.addEventListener('focusout', (e) => {
             if (e.target.classList && e.target.classList.contains('video-caption-input')) {
-                // 약간의 지연 후 포커스 상태 업데이트 (다른 입력 필드로 이동할 수 있음)
+                // Decay slightly to update focus status (might move to another input)
                 setTimeout(() => {
                     const activeElement = document.activeElement;
                     if (activeElement && activeElement.classList && activeElement.classList.contains('video-caption-input')) {
@@ -776,20 +788,77 @@
                     }
                 }, 200);
             }
-        }, true); // capture phase에서 처리
-        
-        // 입력 필드가 포커스되어 있지 않을 때만 상태 업데이트
+        }, true); // capture phase
+
+        // Update status only if input not focused
         setInterval(() => {
-            // 현재 포커스 상태 재확인
+            // Recheck current focus status
             const activeElement = document.activeElement;
             const currentlyFocused = activeElement && activeElement.classList && activeElement.classList.contains('video-caption-input');
-            
+
             if (!currentlyFocused && !isAnyInputFocused) {
                 updateStatus();
             }
         }, 5000);
-        
+
     });
+
+    // Save merged video helper
+    async function saveMergedVideo(filename) {
+        showToast('Preparing download...', 'info');
+
+        try {
+            // Fetch the file blob
+            const response = await fetch(`/api/download/${filename}`);
+            if (!response.ok) throw new Error('Download failed');
+            const blob = await response.blob();
+
+            // Check for File System Access API support
+            if ('showSaveFilePicker' in window) {
+                try {
+                    const handle = await window.showSaveFilePicker({
+                        suggestedName: filename,
+                        types: [{
+                            description: 'MP4 Video',
+                            accept: { 'video/mp4': ['.mp4'] },
+                        }],
+                    });
+
+                    const writable = await handle.createWritable();
+                    await writable.write(blob);
+                    await writable.close();
+                    showToast('File saved successfully!', 'success');
+                    return;
+                } catch (err) {
+                    // User cancelled or error
+                    if (err.name !== 'AbortError') {
+                        console.error('File picker error:', err);
+                        // Fallback to default download if error wasn't cancellation
+                        fallbackDownload(blob, filename);
+                    }
+                    return;
+                }
+            } else {
+                // Fallback for browsers without API support
+                fallbackDownload(blob, filename);
+            }
+        } catch (error) {
+            console.error('Save error:', error);
+            showToast('Error saving file: ' + error.message, 'error');
+        }
+    }
+
+    function fallbackDownload(blob, filename) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+        showToast('Download started', 'success');
+    }
 </script>
 {% endblock %}
-

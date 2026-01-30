@@ -1,27 +1,27 @@
 {% extends "base.html" %}
 
-{% block title %}홈 - Video Clips{% endblock %}
+{% block title %}Home - Video Clips{% endblock %}
 
 {% block content %}
 <div class="page-container">
     <header class="page-header">
-        <h1>쇼츠 영상 자동 병합</h1>
-        <p class="subtitle">영상을 병합하고 AI 클립을 생성하세요</p>
+        <h1>Short Video Auto-Merge</h1>
+        <p class="subtitle">Merge videos and create AI clips</p>
     </header>
 
     <section class="dashboard">
         <div class="status-card">
-            <h3>원본 영상</h3>
+            <h3>Source Videos</h3>
             <div class="status-info">
-                <span id="raw-count">0</span> 개
+                <span id="raw-count">0</span> files
             </div>
             <div id="raw-list" class="file-list"></div>
         </div>
 
         <div class="status-card">
-            <h3>병합된 영상</h3>
+            <h3>Merged Video</h3>
             <div class="status-info">
-                <span id="merged-status">없음</span>
+                <span id="merged-status">None</span>
             </div>
             <div id="merged-size" class="file-size"></div>
             <div id="merged-preview" class="video-preview"></div>
@@ -29,18 +29,18 @@
     </section>
 
     <section class="quick-actions">
-        <h2>빠른 작업</h2>
+        <h2>Quick Actions</h2>
         <div class="action-grid">
             <a href="{{ url_for('merge_page') }}" class="action-card">
                 <div class="action-icon"></div>
-                <h3>영상 병합</h3>
-                <p>여러 영상을 하나로 병합</p>
+                <h3>Merge Videos</h3>
+                <p>Merge multiple videos into one</p>
             </a>
 
             <a href="{{ url_for('ai_prompt_page') }}" class="action-card">
                 <div class="action-icon"></div>
-                <h3>AI 프롬프트</h3>
-                <p>바이럴 프롬프트, 훅, 해시태그 자동 생성</p>
+                <h3>AI Prompt</h3>
+                <p>Auto-generate viral prompts, hooks, and hashtags</p>
             </a>
         </div>
     </section>
@@ -49,7 +49,7 @@
 
 {% block scripts %}
 <script>
-    // 상태 업데이트
+    // Status update
     async function updateStatus() {
         try {
             const response = await fetch('/api/status');
@@ -62,7 +62,7 @@
                     `<div>${video}</div>`
                 ).join('');
             } else {
-                rawList.innerHTML = '<div style="color: #999;">영상이 없습니다</div>';
+                rawList.innerHTML = '<div style="color: #999;">No videos</div>';
             }
 
             const mergedStatus = document.getElementById('merged-status');
@@ -70,23 +70,22 @@
             const mergedPreview = document.getElementById('merged-preview');
 
             if (status.merged_exists && status.latest_merged) {
-                mergedStatus.textContent = '준비됨';
+                mergedStatus.textContent = 'Ready';
                 mergedStatus.style.color = '#fff';
-                mergedSize.textContent = `크기: ${status.merged_size} MB`;
+                mergedSize.textContent = `Size: ${status.merged_size} MB`;
 
-                // 기존 비디오 확인
+                // Check existing video
                 const existingVideo = mergedPreview.querySelector('video');
                 const existingSource = existingVideo ? existingVideo.querySelector('source') : null;
                 const currentSrc = existingSource ? existingSource.getAttribute('src') : '';
                 const newSrc = `/videos/${status.latest_merged}`;
 
-                // 파일명이 변경되었거나 비디오가 없을 때만 업데이트
-                // 파일명에서 쿼리 파라미터 제거하여 비교
+                // Update only if filename changed or no video
                 const currentFilename = currentSrc ? currentSrc.split('?')[0].split('/').pop() : '';
                 const newFilename = status.latest_merged;
 
                 if (currentFilename !== newFilename) {
-                    // 캐시 방지를 위한 타임스탬프 추가
+                    // Add timestamp to prevent caching
                     const timestamp = new Date().getTime();
                     mergedPreview.innerHTML = `
                         <video controls style="width: 100%; border-radius: 10px; max-height: 300px;">
@@ -95,13 +94,13 @@
                     `;
                 }
             } else {
-                mergedStatus.textContent = '없음';
+                mergedStatus.textContent = 'None';
                 mergedStatus.style.color = '#999';
                 mergedSize.textContent = '';
                 mergedPreview.innerHTML = '';
             }
         } catch (error) {
-            console.error('상태 업데이트 오류:', error);
+            console.error('Status update error:', error);
         }
     }
 

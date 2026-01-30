@@ -21,10 +21,35 @@ class PromptGenerator:
         self.client = OpenAI(api_key=api_key)
         self.model = "gpt-4o"
 
-    def generate_prompt(self, topic: str, add_credit: bool = True) -> Dict:
-        logger.info(f"바이럴 비디오 프롬프트 생성 시작: {topic}")
+    def generate_prompt(self, topic: str, add_credit: bool = True, is_asmr: bool = False) -> Dict:
+        logger.info(f"바이럴 비디오 프롬프트 생성 시작: {topic} (ASMR: {is_asmr})")
 
-        system_prompt = """
+        if is_asmr:
+            system_prompt = """
+You are a Hyper-realistic ASMR Video Director.
+Your goal is to generate a Commercial-grade ASMR video prompt based on the user's food input.
+
+STRICT RULES (Do not deviate):
+1.  **Format**: JSON ONLY. No markdown, no explanations.
+2.  **Camera**: 9:16 Vertical, Front facing, No movement, Extreme macro close-up (lips & mouth only), Blurred background (shallow depth of field, soft bokeh).
+3.  **Subject**: Female, Red glossy lipstick, Catchlight on lips/food. Commercial-grade.
+4.  **Action**: Video MUST START with food entering mouth. Always front-facing. Chews vigorously, slow-motion chewing.
+5.  **Physics**: Subsurface Scattering, Viscosity/Elasticity, Micro-moisture (oil/gloss).
+6.  **Sound Visuals**: Crunch/Crack/Shatter/Stretch/Juice burst. Visualized sound.
+7.  **Lighting**: Studio lighting, Cinematic rim light, High contrast.
+8.  **Audio**: High-fidelity ASMR audio, Clear close-up chewing, Wet/Sticky/Crunchy textures, Binaural. NO music/vocals.
+9.  **Quality**: Ultra-realistic, 8K, Lifelike motion.
+10. **Hashtags**: MUST include: #rainbow #mukbang #asmr #candy #chewingsounds
+
+OUTPUT JSON FORMAT:
+{
+  "video_prompt": "Combine ALL the above rules into a single continuous English prompt description. Ensure the specific food is the star. Include the mandatory audio prompt at the end.",
+  "hook_caption": "Short, engaging English caption.",
+  "hashtags": ["#rainbow", "#mukbang", "#asmr", "#candy", "#chewingsounds", "#YourGeneratedTag1", "#YourGeneratedTag2"]
+}
+"""
+        else:
+            system_prompt = """
 You are a Master Viral Video Director & Prompt Engineer.
 Your goal is to generate the most visually stunning, high-retention video prompts for social media.
 
@@ -53,7 +78,8 @@ OUTPUT FORMAT (JSON ONLY):
   "hashtags": ["#tag1", "#tag2"]
 }
 """
-        user_prompt = f"Topic: {topic}"
+        
+        user_prompt = f"Topic/Food: {topic}"
         
         # 재시도 로직 (최대 3회)
         max_retries = 3
@@ -69,32 +95,39 @@ OUTPUT FORMAT (JSON ONLY):
                 )
                 result = json.loads(response.choices[0].message.content)
                 
-                category = result.get("category", "GENERAL")
-                topic_en = result.get("topic_en", topic) # AI가 번역 실패시 원본 사용
-                visual_desc = result.get("visual_description", "")
-                
-                # 프롬프트 조립
-                video_prompt = ""
-                if category == "FOOD":
-                    video_prompt = (
-                        f"Hyper-realistic 4K ASMR video, 9:16 vertical. "
-                        f"{visual_desc} "
-                        f"Focus on visual satisfaction, big appetite. "
-                        f"Cinematic lighting, high contrast, no background music."
-                    )
-                elif category == "ANIMAL":
-                    video_prompt = (
-                        f"Cute & Cinematic 4K video, 9:16 vertical. "
-                        f"{visual_desc} "
-                        f"Soft lighting, detailed textures, adorable expression. "
-                        f"Shallow depth of field."
-                    )
+                if is_asmr:
+                    # ASMR mode directly returns the prompt from logic
+                    video_prompt = result.get("video_prompt", "")
+                    # Ensure audio disclaimer is present if not
+                    required_audio = "high-fidelity ASMR chewing sounds, intimate close-up mic perspective, every bite clearly audible, no music, no vocals"
+                    if required_audio not in video_prompt:
+                         video_prompt += f", {required_audio}"
                 else:
-                    video_prompt = (
-                        f"Viral Cinematic 4K video, 9:16 vertical. "
-                        f"{visual_desc} "
-                        f"High production value, dynamic composition, trending visual style."
-                    )
+                    # Standard mode reconstruction
+                    category = result.get("category", "GENERAL")
+                    topic_en = result.get("topic_en", topic) 
+                    visual_desc = result.get("visual_description", "")
+                    
+                    if category == "FOOD":
+                        video_prompt = (
+                            f"Hyper-realistic 4K ASMR video, 9:16 vertical. "
+                            f"{visual_desc} "
+                            f"Focus on visual satisfaction, big appetite. "
+                            f"Cinematic lighting, high contrast, no background music."
+                        )
+                    elif category == "ANIMAL":
+                        video_prompt = (
+                            f"Cute & Cinematic 4K video, 9:16 vertical. "
+                            f"{visual_desc} "
+                            f"Soft lighting, detailed textures, adorable expression. "
+                            f"Shallow depth of field."
+                        )
+                    else:
+                        video_prompt = (
+                            f"Viral Cinematic 4K video, 9:16 vertical. "
+                            f"{visual_desc} "
+                            f"High production value, dynamic composition, trending visual style."
+                        )
 
                 hook_caption = result.get("hook_caption", "")
                 if add_credit:

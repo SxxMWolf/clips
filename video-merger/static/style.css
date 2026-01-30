@@ -106,6 +106,41 @@ body {
     font-weight: 600;
 }
 
+/* Language Selector */
+.language-selector {
+    display: flex;
+    align-items: center;
+}
+
+.language-dropdown {
+    padding: 8px 12px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    outline: none;
+    font-family: inherit;
+}
+
+.language-dropdown:hover {
+    border-color: var(--accent);
+    background: var(--bg-hover);
+}
+
+.language-dropdown:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-light);
+}
+
+.language-dropdown option {
+    padding: 8px;
+}
+
+
 /* 메인 컨테이너 */
 .main-container {
     max-width: 1200px;
@@ -730,40 +765,46 @@ textarea.form-control {
     .nav-container {
         padding: 0 16px;
     }
-    
+
     .nav-menu {
         gap: 4px;
     }
-    
+
     .nav-link {
         font-size: 14px;
         padding: 8px 12px;
     }
-    
+
+    .language-dropdown {
+        font-size: 13px;
+        padding: 6px 10px;
+    }
+
+
     .main-container {
         padding: 24px 16px;
     }
-    
+
     .page-header h1 {
         font-size: 24px;
     }
-    
+
     .dashboard {
         grid-template-columns: 1fr;
     }
-    
+
     .action-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .platform-selector {
         flex-direction: column;
     }
-    
+
     .platform-checkbox {
         min-width: 100%;
     }
-    
+
     /* 병합 섹션 - 모바일에서는 세로 배치 */
     .merge-section {
         grid-template-columns: 1fr;

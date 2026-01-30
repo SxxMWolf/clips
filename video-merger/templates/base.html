@@ -1,11 +1,13 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}쇼츠 영상 자동 병합 및 업로드{% endblock %}</title>
+    <title>{% block title %}Short Video Auto-Merge{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+
 <body>
     <nav class="navbar">
         <div class="nav-container">
@@ -15,9 +17,12 @@
                 </a>
             </div>
             <ul class="nav-menu">
-                <li><a href="{{ url_for('ai_prompt_page') }}" class="nav-link {% if request.endpoint == 'ai_prompt_page' %}active{% endif %}">AI 프롬프트</a></li>
-                <li><a href="{{ url_for('merge_page') }}" class="nav-link {% if request.endpoint == 'merge_page' %}active{% endif %}">영상 병합</a></li>
-
+                <li><a href="{{ url_for('ai_prompt_page') }}"
+                        class="nav-link {% if request.endpoint == 'ai_prompt_page' %}active{% endif %}">AI Prompt</a>
+                </li>
+                <li><a href="{{ url_for('merge_page') }}"
+                        class="nav-link {% if request.endpoint == 'merge_page' %}active{% endif %}">Merge Videos</a>
+                </li>
             </ul>
         </div>
     </nav>
@@ -30,5 +35,5 @@
     <script src="{{ url_for('static', filename='script.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
-</html>
 
+</html>

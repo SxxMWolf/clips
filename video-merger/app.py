@@ -1,6 +1,6 @@
 """
-쇼츠 영상 자동 병합 웹 인터페이스
-Flask를 사용한 웹 대시보드
+Short Video Auto-Merge Web Interface
+Web Dashboard using Flask
 """
 
 import os
@@ -17,16 +17,16 @@ from prompt.prompt_generator import PromptGenerator
 import requests
 import re
 
-# 로거 설정
+# Logger setup
 logger = logging.getLogger(__name__)
 
-# Flask 개발 서버 경고 메시지 숨기기
+# Suppress Flask dev server warnings
 import warnings
 warnings.filterwarnings("ignore", category=UserWarning, module="werkzeug")
 warnings.filterwarnings("ignore", message=".*development server.*")
 logging.getLogger("werkzeug").setLevel(logging.ERROR)
 
-# 환경 변수 로드
+# Load environment variables
 load_dotenv()
 
 app = Flask(__name__)
@@ -35,54 +35,51 @@ app.config['SECRET_KEY'] = os.urandom(24)
 
 @app.route('/')
 def index():
-    """메인 페이지"""
+    """Main Page"""
     return render_template('index.html')
 
 
 @app.route('/merge')
 def merge_page():
-    """영상 병합 페이지"""
+    """Video Merge Page"""
     return render_template('merge.html')
-
-
-
 
 
 @app.route('/ai-prompt')
 def ai_prompt_page():
-    """AI 프롬프트 생성 페이지"""
+    """AI Prompt Generation Page"""
     return render_template('ai_prompt.html')
 
 
 @app.route('/favicon.ico')
 def favicon():
-    """Favicon 요청 처리 (404 방지)"""
-    return Response(status=204)  # No Content - 브라우저가 404를 표시하지 않음
+    """Handle Favicon request (avoid 404)"""
+    return Response(status=204)  # No Content
 
 
 @app.route('/api/status')
 def get_status():
-    """현재 상태 정보 반환"""
+    """Return current status information"""
     raw_dir = Path("videos/raw")
     final_dir = Path("videos/final")
     
-    # 원본 영상 목록 (역순 정렬 - 최신이 먼저)
+    # Raw video list (reverse sort - newest first)
     raw_videos = []
     if raw_dir.exists():
         video_files = list(raw_dir.glob("*.mp4"))
-        # 타임스탬프로 역순 정렬 (최신이 먼저)
+        # Sort by timestamp (newest first)
         raw_videos = sorted(
             [f.name for f in video_files],
             key=lambda x: int(x.split('_')[0]) if x.split('_')[0].isdigit() else 0,
             reverse=True
         )
     
-    # 최신 병합 영상 찾기 (가장 최근 수정된 파일)
+    # Find latest merged video
     final_videos = []
     if final_dir.exists():
         final_videos = list(final_dir.glob("*.mp4"))
         if final_videos:
-            # 수정 시간 기준으로 정렬 (최신순)
+            # Sort by modification time (newest first)
             final_videos.sort(key=lambda f: f.stat().st_mtime, reverse=True)
     
     merged_exists = len(final_videos) > 0
@@ -103,48 +100,48 @@ def get_status():
 
 @app.route('/api/merge', methods=['POST'])
 def merge_videos():
-    """영상 병합 실행"""
+    """Execute video merge"""
     try:
         data = request.json or {}
         keyword = (data.get('keyword') or '').strip() if data.get('keyword') else ''
-        video_order = data.get('video_order')  # 사용자가 지정한 순서
-        video_texts = data.get('video_texts')  # 각 영상의 하단 텍스트
-        aspect_ratio = data.get('aspect_ratio', '4:5')  # 출력 비율 (기본값: 4:5)
-        add_letterbox = data.get('add_letterbox', True)  # letterbox 추가 여부 (기본값: True)
+        video_order = data.get('video_order')  # User specified order
+        video_texts = data.get('video_texts')  # Footer text for each video
+        aspect_ratio = data.get('aspect_ratio', '4:5')  # Output ratio (default: 4:5)
+        add_letterbox = data.get('add_letterbox', True)  # Letterbox option (default: True)
         
-        # video_order가 빈 리스트이거나 None이면 None으로 설정
+        # Set to None if video_order is empty
         if video_order and len(video_order) == 0:
             video_order = None
         
         try:
             merger = VideoMerger(keyword=keyword if keyword else None, video_order=video_order, video_texts=video_texts, aspect_ratio=aspect_ratio, add_letterbox=add_letterbox)
         except Exception as e:
-            logger.error(f"VideoMerger 초기화 오류: {e}")
-            logger.error(f"상세 오류: {traceback.format_exc()}")
+            logger.error(f"VideoMerger init error: {e}")
+            logger.error(f"Detailed error: {traceback.format_exc()}")
             return jsonify({
                 'success': False,
-                'message': f'VideoMerger 초기화 실패: {str(e)}'
+                'message': f'VideoMerger init failed: {str(e)}'
             }), 500
         
-        # output_file 확인
+        # Check output_file
         if not hasattr(merger, 'output_file') or not merger.output_file:
-            logger.error("merger.output_file이 설정되지 않았습니다.")
+            logger.error("merger.output_file not set.")
             return jsonify({
                 'success': False,
-                'message': '출력 파일 설정 오류'
+                'message': 'Output file configuration error'
             }), 500
         
         output_filename = str(merger.output_file.name) if hasattr(merger.output_file, 'name') else str(merger.output_file)
         
-        # 별도 스레드에서 실행 (비동기)
+        # Run in separate thread (async)
         def run_merge():
             try:
-                logger.info(f"병합 시작: keyword={keyword}, video_order={video_order}")
+                logger.info(f"Start merge: keyword={keyword}, video_order={video_order}")
                 merger.run()
-                logger.info(f"병합 완료: {merger.output_file}")
+                logger.info(f"Merge complete: {merger.output_file}")
             except Exception as e:
-                logger.error(f"병합 실행 중 오류: {e}")
-                logger.error(f"상세 오류: {traceback.format_exc()}")
+                logger.error(f"Merge execution error: {e}")
+                logger.error(f"Detailed error: {traceback.format_exc()}")
         
         thread = threading.Thread(target=run_merge)
         thread.daemon = True
@@ -152,55 +149,53 @@ def merge_videos():
         
         return jsonify({
             'success': True,
-            'message': '영상 병합이 시작되었습니다.',
+            'message': 'Video merge started.',
             'filename': output_filename
         })
     except Exception as e:
-        logger.error(f"병합 요청 처리 오류: {e}")
-        logger.error(f"상세 오류: {traceback.format_exc()}")
+        logger.error(f"Merge request error: {e}")
+        logger.error(f"Detailed error: {traceback.format_exc()}")
         return jsonify({
             'success': False,
-            'message': f'오류 발생: {str(e)}'
+            'message': f'Error occurred: {str(e)}'
         }), 500
 
 
 @app.route('/api/upload/video', methods=['POST'])
 def upload_video():
-    """영상 파일 업로드 (병합용)"""
+    """Upload video file (for merge)"""
     try:
         if 'file' not in request.files:
             return jsonify({
                 'success': False,
-                'message': '파일이 없습니다.'
+                'message': 'No file found.'
             }), 400
         
         file = request.files['file']
         if file.filename == '':
             return jsonify({
                 'success': False,
-                'message': '파일이 선택되지 않았습니다.'
+                'message': 'No file selected.'
             }), 400
         
         if not file.filename.lower().endswith('.mp4'):
             return jsonify({
                 'success': False,
-                'message': 'MP4 파일만 업로드 가능합니다.'
+                'message': 'Only MP4 files are allowed.'
             }), 400
         
-        # 업로드 순서를 타임스탬프로 저장
+        # Save upload order with timestamp
         import time
-        timestamp = int(time.time() * 1000)  # 밀리초 단위
-        # safe_name = secure_filename(file.filename)
-        # secure_filename은 한글을 지원하지 않으므로 커스텀 정제 로직 사용
+        timestamp = int(time.time() * 1000)  # ms
         filename_base = os.path.basename(file.filename)
-        # 허용 문자: 영문, 숫자, 한글, 공백, ., -, _
+        # Allow alphanumeric, dot, dash, underscore
         safe_name = re.sub(r'[^\w\s\.\-_]', '', filename_base).strip()
         
-        # 모든 문자가 제거되어 확장자만 남거나 비어있는 경우 처리
+        # Handle empty filename
         if not safe_name or safe_name == '.mp4':
             safe_name = 'video.mp4'
             
-        # .mp4 확장자 보장
+        # Ensure .mp4 extension
         if not safe_name.lower().endswith('.mp4'):
              safe_name = f"{safe_name}.mp4"
                 
@@ -214,20 +209,20 @@ def upload_video():
         
         return jsonify({
             'success': True,
-            'message': '파일이 업로드되었습니다.',
+            'message': 'File uploaded.',
             'filename': filename
         })
     except Exception as e:
-        logger.error(f"파일 업로드 오류: {e}")
+        logger.error(f"File upload error: {e}")
         return jsonify({
             'success': False,
-            'message': f'업로드 실패: {str(e)}'
+            'message': f'Upload failed: {str(e)}'
         }), 500
 
 
 @app.route('/api/upload/video/clear', methods=['POST'])
 def clear_videos():
-    """모든 업로드된 영상 파일을 삭제"""
+    """Delete all uploaded video files"""
     try:
         raw_dir = Path("videos/raw")
         
@@ -235,48 +230,50 @@ def clear_videos():
         if raw_dir.exists():
             for file in raw_dir.glob("*.mp4"):
                 try:
-                    file.unlink()  # 파일 삭제
+                    file.unlink()  # Delete file
                     deleted_count += 1
                 except Exception as e:
-                    # 개별 파일 삭제 실패 시 로그만 남기고 계속 진행
-                    logger.error(f"파일 삭제 실패 {file.name}: {e}")
+                    logger.error(f"File delete failed {file.name}: {e}")
         
         return jsonify({
             'success': True,
-            'message': f'{deleted_count}개의 파일이 삭제되었습니다.'
+            'message': f'{deleted_count} files deleted.'
         })
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'파일 이동 실패: {str(e)}'
+            'message': f'Clear failed: {str(e)}'
         }), 500
 
 
 @app.route('/videos/<path:filename>')
 def serve_video(filename):
-    """영상 파일 제공 (final 폴더)"""
+    """Serve video file (final folder)"""
     return send_from_directory('videos/final', filename)
 
 
-
+@app.route('/api/download/<path:filename>')
+def download_video(filename):
+    """Download video file (final folder)"""
+    return send_from_directory('videos/final', filename, as_attachment=True)
 
 
 @app.route('/api/ai/generate-prompt', methods=['POST'])
 def generate_ai_prompt():
-    """AI 프롬프트 생성"""
+    """Generate AI Prompt"""
     try:
         data = request.json
         topic = data.get('topic', '').strip()
-        # prompt_type = data.get('prompt_type', 'video')  # Deprecated
+        is_asmr = data.get('is_asmr', False)
         
         if not topic:
             return jsonify({
                 'success': False,
-                'message': '주제를 입력해주세요.'
+                'message': 'Please enter a topic.'
             }), 400
         
         prompt_generator = PromptGenerator()
-        result = prompt_generator.generate_prompt(topic)
+        result = prompt_generator.generate_prompt(topic, is_asmr=is_asmr)
         
         return jsonify({
             'success': True,
@@ -285,12 +282,12 @@ def generate_ai_prompt():
     except Exception as e:
         return jsonify({
             'success': False,
-            'message': f'오류 발생: {str(e)}'
+            'message': f'Error occurred: {str(e)}'
         }), 500
 
 
 if __name__ == '__main__':
-    # 디렉토리 생성
+    # Create directories
     Path("videos/raw").mkdir(parents=True, exist_ok=True)
     Path("videos/final").mkdir(parents=True, exist_ok=True)
 
@@ -298,12 +295,11 @@ if __name__ == '__main__':
     Path("static").mkdir(exist_ok=True)
     
     print("=" * 50)
-    print("쇼츠 영상 자동 병합 웹 서버")
+    print("Short Video Auto-Merge Server")
     print("=" * 50)
-    print("브라우저에서 http://localhost:5001 접속")
+    print("Open http://localhost:5001 in browser")
     print("=" * 50)
     
-    # Flask 개발 서버 경고 메시지 숨기기
     import sys
     import warnings
     if not sys.warnoptions:
@@ -312,6 +308,7 @@ if __name__ == '__main__':
     try:
         app.run(debug=True, host='0.0.0.0', port=5001, use_reloader=False)
     except Exception as e:
-        logger.error(f"서버 시작 실패: {e}")
+        logger.error(f"Server start failed: {e}")
         raise
+
 
