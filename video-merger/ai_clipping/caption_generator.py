@@ -1,12 +1,8 @@
-"""
-AI 제목/해시태그 생성 서비스
-바이럴 잠재력이 높은 제목과 해시태그를 생성합니다.
-"""
-
 import os
 import logging
-from typing import Dict
-from openai import OpenAI
+import json
+from typing import Dict, List
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -14,113 +10,111 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
 class CaptionGenerator:
-    """AI 기반 제목/해시태그 생성 서비스"""
+    """AI 기반 바이럴 제목 및 소셜 미디어 메타데이터 생성 서비스"""
     
     def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            raise ValueError("OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")
-        self.client = OpenAI(api_key=api_key)
+            raise ValueError("GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.")
+        
+        genai.configure(api_key=api_key)
+        # 최신 모델인 gemini-2.0-flash 사용 및 JSON 모드 강제
+        self.model = genai.GenerativeModel(
+            'gemini-2.0-flash', 
+            generation_config={"response_mime_type": "application/json"}
+        )
     
-    def generate_caption(
-        self,
-        clip_text: str,
-        hook: str
-    ) -> Dict:
+    def generate_caption(self, clip_text: str, hook: str) -> Dict:
         """
-        클립용 제목, 해시태그, 설명을 생성합니다.
-        
-        Args:
-            clip_text: 클립의 텍스트 내용
-            hook: 클립의 훅 (왜 선택되었는지)
-            
-        Returns:
-            {
-                "title": "Shocking revelation about...",
-                "hashtags": ["#shorts", "#viral", ...],
-                "description": "..."
-            }
+        클립의 내용을 분석하여 바이럴 잠재력이 높은 제목, 설명, 해시태그를 생성합니다.
         """
-        logger.info("제목/해시태그 생성 시작")
+        logger.info("바이럴 캡션 및 메타데이터 생성 시작")
         
-        system_prompt = """You are a viral content expert for YouTube Shorts, TikTok, and Instagram Reels.
+        system_prompt = """
+You are a top-tier social media strategist for TikTok, Instagram Reels, and YouTube Shorts.
+Your goal is to stop the scroll and maximize shareability.
 
-Generate engaging titles and hashtags that:
-- Maximize curiosity and click-through rate
-- Encourage comments and engagement
-- Are honest (not clickbait lies)
-- Optimize for retention
-- Are suitable for English-speaking audiences
+STRATEGY:
+- Title: Use 'Curiosity Gaps' or 'High Stakes' (e.g., "I didn't expect this...", "The secret to...").
+- Hook Integration: Seamlessly blend the provided 'hook reason' into the title and description.
+- Tone: High energy, punchy, and authentic.
+- Audience: Global English-speaking audience.
 
-Title requirements:
-- Maximum 80 characters
-- Attention-grabbing hook
-- Creates curiosity gap
-- Makes viewers want to watch
+OUTPUT SPECIFICATIONS:
+1. Title: Emotional, provocative, or intriguing. Max 80 characters. Use emojis strategically.
+2. Description: 2-3 power sentences. Include a Call-to-Action (CTA) like "Share this with a friend who needs to see this".
+3. Hashtags: 15-20 highly relevant tags. Mix of:
+   - Viral Broad (e.g., #fyp, #viral)
+   - Content Specific (e.g., #cookinghacks, #mindset)
+   - Action Oriented (e.g., #watchthis, #dontblink)
 
-Hashtags requirements:
-- 15-25 hashtags
-- Mix of broad and niche tags
-- Trending when possible
-- Platform-appropriate"""
+Return JSON ONLY in this format:
+{
+  "title": "Viral Title Here 😱",
+  "description": "Powerful description with CTA.",
+  "hashtags": ["#tag1", "#tag2", "#tag3"]
+}
+"""
 
-        user_prompt = f"""Clip content:
+        user_prompt = f"""
+[Clip Content Analysis]:
 {clip_text}
 
-Hook reason: {hook}
+[Why this clip is a hook]:
+{hook}
 
-Generate:
-1. A viral title (max 80 chars)
-2. 15-25 hashtags (comma-separated)
-3. A short description (2-3 sentences)
-
-Return JSON format:
-{{
-  "title": "...",
-  "hashtags": ["#tag1", "#tag2", ...],
-  "description": "..."
-}}"""
+Generate the viral metadata now.
+"""
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",  # response_format 지원 모델
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.8,
-                response_format={"type": "json_object"}
-            )
+            response = self.model.generate_content(f"{system_prompt}\n\n{user_prompt}")
+            result = json.loads(response.text)
             
-            import json
-            result = json.loads(response.choices[0].message.content)
-            
-            # 해시태그 정리
-            if isinstance(result.get("hashtags"), str):
-                hashtags = [tag.strip() for tag in result["hashtags"].split(",")]
-            else:
-                hashtags = result.get("hashtags", [])
-            
-            # 해시태그에 # 추가 (없는 경우)
-            hashtags = [
-                tag if tag.startswith("#") else f"#{tag}"
-                for tag in hashtags
-            ]
+            # 해시태그 가공 및 정제
+            raw_hashtags = result.get("hashtags", [])
+            refined_hashtags = self._clean_hashtags(raw_hashtags)
             
             return {
-                "title": result.get("title", "Viral Clip"),
-                "hashtags": hashtags[:25],  # 최대 25개
-                "description": result.get("description", "")
+                "title": result.get("title", "Wait for it... 😲"),
+                "description": result.get("description", "You won't believe what happens next. Check it out!"),
+                "hashtags": refined_hashtags[:20] # 최대 20개로 제한 (알고리즘 최적화)
             }
             
         except Exception as e:
-            logger.error(f"제목/해시태그 생성 오류: {e}")
-            # 폴백
-            return {
-                "title": hook[:80] if hook else "Viral Clip",
-                "hashtags": ["#shorts", "#viral", "#trending", "#fyp", "#foryou"],
-                "description": clip_text[:200] if clip_text else ""
-            }
+            logger.error(f"캡션 생성 중 오류 발생: {e}")
+            return self._get_fallback_metadata(hook)
 
+    def _clean_hashtags(self, tags: List[str]) -> List[str]:
+        """해시태그 형식 정리 및 중복 제거"""
+        cleaned = []
+        for tag in tags:
+            # 공백 제거 및 # 기호 강제
+            t = tag.strip().replace(" ", "")
+            if not t.startswith("#"):
+                t = f"#{t}"
+            if t not in cleaned and len(t) > 1:
+                cleaned.append(t)
+        return cleaned
+
+    def _get_fallback_metadata(self, hook: str) -> Dict:
+        """오류 발생 시 반환할 최소한의 데이터"""
+        return {
+            "title": f"You need to see this: {hook[:50]}...",
+            "description": "This clip is viral for a reason. Watch until the end! #viral #shorts",
+            "hashtags": ["#fyp", "#viral", "#trending", "#shorts", "#foryou"]
+        }
+
+# --- 실행 예시 ---
+if __name__ == "__main__":
+    generator = CaptionGenerator()
+    
+    # 예시 데이터
+    sample_text = "How to make a 5-minute pasta that tastes like a 5-star restaurant."
+    sample_hook = "The secret ingredient revealed at the end is completely unexpected."
+    
+    result = generator.generate_caption(sample_text, sample_hook)
+    
+    print(f"TITLE: {result['title']}")
+    print(f"DESC: {result['description']}")
+    print(f"TAGS: {' '.join(result['hashtags'])}")

@@ -6,7 +6,7 @@ GPT 기반 클립 선택 서비스
 import os
 import logging
 from typing import List, Dict
-from openai import OpenAI
+import google.generativeai as genai
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -19,10 +19,11 @@ class ClipSelector:
     """GPT를 사용한 클립 선택 서비스"""
     
     def __init__(self):
-        api_key = os.getenv("OPENAI_API_KEY")
+        api_key = os.getenv("GEMINI_API_KEY")
         if not api_key:
-            raise ValueError("OPENAI_API_KEY 환경 변수가 설정되지 않았습니다.")
-        self.client = OpenAI(api_key=api_key)
+            raise ValueError("GEMINI_API_KEY 환경 변수가 설정되지 않았습니다.")
+        genai.configure(api_key=api_key)
+        self.model = genai.GenerativeModel('gemini-flash-latest', generation_config={"response_mime_type": "application/json"})
     
     def select_clips(
         self,
@@ -119,19 +120,12 @@ IMPORTANT: You must select exactly 3 non-overlapping viral segments.
 Return a JSON object with exactly 3 segments in the "segments" array."""
 
         try:
-            response = self.client.chat.completions.create(
-                model="gpt-4o-mini",  # response_format 지원 모델
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt_full}
-                ],
-                temperature=0.7,
-                response_format={"type": "json_object"}
-            )
+            prompt_content = f"{system_prompt}\n\n{user_prompt_full}"
+            response = self.model.generate_content(prompt_content)
             
             # JSON 파싱
             import json
-            result_text = response.choices[0].message.content
+            result_text = response.text
             
             # JSON 파싱
             try:

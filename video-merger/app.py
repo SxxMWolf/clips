@@ -331,7 +331,7 @@ def generate_ai_prompt():
     try:
         data = request.json
         topic = data.get('topic', '').strip()
-        prompt_type = data.get('prompt_type', 'video')  # 'video' 또는 'cat_travel'
+        # prompt_type = data.get('prompt_type', 'video')  # Deprecated
         
         if not topic:
             return jsonify({
@@ -340,7 +340,7 @@ def generate_ai_prompt():
             }), 400
         
         prompt_generator = PromptGenerator()
-        result = prompt_generator.generate_prompt(topic, prompt_type=prompt_type)
+        result = prompt_generator.generate_prompt(topic)
         
         return jsonify({
             'success': True,
