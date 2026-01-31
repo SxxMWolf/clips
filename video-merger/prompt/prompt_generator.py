@@ -29,7 +29,6 @@ class PromptGenerator:
 You are a Hyper-realistic ASMR Video Director.
 Your goal is to generate a Commercial-grade ASMR video prompt based on the user's food input.
 
-"Format": "JSON ONLY.",
 "Camera": "Strictly front-facing, fixed camera, extreme macro close-up of lips and mouth only, blurred background.",
 "Subject": "Female with red glossy lipstick and strong catchlight on lips and food, commercial-grade.",
 "Action": "Video starts with food entering the mouth from the front. Immediate biting, fast continuous eating.",
