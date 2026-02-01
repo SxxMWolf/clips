@@ -29,18 +29,17 @@ class PromptGenerator:
 You are a Hyper-realistic ASMR Video Director.
 Your goal is to generate a Commercial-grade ASMR video prompt based on the user's food input.
 
-"Camera": "Strictly front-facing, fixed camera, extreme macro close-up of lips and mouth only, blurred background.",
-"Subject": "Female with red glossy lipstick and strong catchlight on lips and food, commercial-grade.",
-"Action": "Video starts with food entering the mouth from the front. Immediate biting, fast continuous eating.",
-"Chewing": "Teeth clamp down firmly. Food is crushed between teeth. Multiple quick bite-and-crush cycles.",
-"Sound_Visuals": "Visualized crunch, crack, shatter, stretch, and juice burst through fractures, snaps, pulls, and liquid release.",
-"Lighting": "Pure white studio light, high contrast.",
-"Audio": "High-fidelity binaural ASMR chewing. Wet, sticky, crunchy textures. No music or vocals.",
-"Quality": "Ultra-realistic, 8K, lifelike motion with realistic food deformation.",
-"Hashtags": ["#rainbow", "#mukbang", "#asmr", "#candy", "#chewingsounds"]
+"Camera": "Extreme close-up of mouth, front view.",
+"Subject": "Glossy red lips. No mics, headphones, or equipment.",
+"Action": "Food enters mouth, immediate chewing.",
+"Chewing": "Visible chewing textures.",
+"Lighting": "Very bright studio light.",
+"Audio": "ASMR sounds only, no music.",
+"Quality": "8K hyper-realistic. No equipment visible.",
+"Hashtags": ["#mukbang", "#asmr", "#food", "#eating"]
 OUTPUT JSON FORMAT:
 {
-  "video_prompt": "Combine ALL the above rules into a single continuous English prompt description. Ensure the specific food is the star. Include the mandatory audio prompt at the end.",
+  "video_prompt": "Concise English prompt description. Focus on food and action. Include mandatory audio.",
   "hook_caption": "Short, engaging English caption.",
   "hashtags": ["#rainbow", "#mukbang", "#asmr", "#candy", "#chewingsounds", "#YourGeneratedTag1", "#YourGeneratedTag2"]
 }
@@ -95,9 +94,16 @@ OUTPUT FORMAT (JSON ONLY):
                 if is_asmr:
                     # ASMR mode directly returns the prompt from logic
                     video_prompt = result.get("video_prompt", "")
-                    # Ensure audio disclaimer is present if not
-                    required_audio = "high-fidelity ASMR chewing sounds, intimate close-up mic perspective, every bite clearly audible, no music, no vocals"
-                    if required_audio not in video_prompt:
+                    
+                    # 1. Force Negative Constraints if missing
+                    neg_prompt = "No microphones, no headphones, no recording equipment visible."
+                    if "No microphones" not in video_prompt:
+                        video_prompt += f" {neg_prompt}"
+
+                    # 3. Ensure audio disclaimer is present
+                    # Removed 'mic perspective' to avoid potential visual confusion, used 'audio perspective'
+                    required_audio = "high-fidelity ASMR chewing sounds, intimate close-up audio perspective, every bite clearly audible, no music, no vocals"
+                    if "high-fidelity ASMR" not in video_prompt:
                          video_prompt += f", {required_audio}"
                 else:
                     # Standard mode reconstruction
@@ -107,10 +113,10 @@ OUTPUT FORMAT (JSON ONLY):
                     
                     if category == "FOOD":
                         video_prompt = (
-                            f"Hyper-realistic 4K ASMR video, 9:16 vertical. "
+                            f"Hyper-realistic 4K ASMR, Extreme close-up of mouth, front view.. "
                             f"{visual_desc} "
-                            f"Focus on visual satisfaction, big appetite. "
-                            f"Cinematic lighting, high contrast, no background music."
+                            f"Visual satisfaction. High contrast. No music. "
+                            f"No microphones or equipment."
                         )
                     elif category == "ANIMAL":
                         video_prompt = (

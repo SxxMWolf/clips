@@ -246,6 +246,44 @@ def clear_videos():
         }), 500
 
 
+@app.route('/api/upload/video/delete', methods=['POST'])
+def delete_video():
+    """Delete a specific uploaded video file"""
+    try:
+        data = request.json
+        filename = data.get('filename')
+        
+        if not filename:
+            return jsonify({
+                'success': False,
+                'message': 'No filename provided.'
+            }), 400
+            
+        # Security: prevent directory traversal
+        filename = os.path.basename(filename)
+        raw_dir = Path("videos/raw")
+        file_path = raw_dir / filename
+        
+        if file_path.exists() and file_path.is_file():
+            file_path.unlink()
+            return jsonify({
+                'success': True,
+                'message': f'File {filename} deleted.'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'message': 'File not found.'
+            }), 404
+            
+    except Exception as e:
+        logger.error(f"File delete failed: {e}")
+        return jsonify({
+            'success': False,
+            'message': f'Delete failed: {str(e)}'
+        }), 500
+
+
 @app.route('/videos/<path:filename>')
 def serve_video(filename):
     """Serve video file (final folder)"""

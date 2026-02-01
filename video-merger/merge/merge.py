@@ -11,8 +11,10 @@ import shutil
 import time
 import tempfile
 import json as json_lib
+import re
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from PIL import Image, ImageDraw, ImageFont
 
 # Logging setup
 logging.basicConfig(
@@ -166,6 +168,133 @@ class VideoMerger:
             logger.error("Installation guide: https://ffmpeg.org/download.html")
             return False
     
+    def _render_text_overlay(self, text: str, width: int, height: int) -> str:
+        """Render text (including emojis) to a transparent PNG file."""
+        try:
+            # Create a transparent image
+            img = Image.new('RGBA', (width, height), (0, 0, 0, 0))
+            draw = ImageDraw.Draw(img)
+            
+            lines = text.split('\n')
+            
+            # Font settings
+            base_font_size = 60
+            font_size = int(base_font_size * (height / 1920)) if height > 0 else base_font_size
+            font_size = max(font_size, 48)
+            
+            # Load fonts
+            font = None
+            emoji_font = None
+            
+            # Primary font for text (Korean & Latin)
+            regular_candidates = [
+                "/System/Library/Fonts/AppleSDGothicNeo.ttc",
+                "/System/Library/Fonts/Helvetica.ttc",
+                "/System/Library/Fonts/Supplemental/Arial.ttf"
+            ]
+            
+            for fp in regular_candidates:
+                if os.path.exists(fp):
+                    try:
+                        font = ImageFont.truetype(fp, font_size, index=0) if fp.endswith('.ttc') else ImageFont.truetype(fp, font_size)
+                        break
+                    except: continue
+
+            # Emoji font - try standard strike sizes (Apple Color Emoji is a bitmap font)
+            # User requested 4x bigger emojis
+            emoji_font_size = font_size * 4
+            emoji_path = "/System/Library/Fonts/Apple Color Emoji.ttc"
+            if os.path.exists(emoji_path):
+                # Try sizes around the requested 4x size
+                # Common bitmap strikes are 20, 32, 40, 48, 64, 96, 128, 160
+                strike_sizes = [emoji_font_size, 160, 128, 96, 64, 48]
+                for sz in strike_sizes:
+                    try:
+                        emoji_font = ImageFont.truetype(emoji_path, int(sz), index=0)
+                        break
+                    except: continue
+            
+            if font is None:
+                font = ImageFont.load_default()
+            if emoji_font is None:
+                emoji_font = font
+
+            line_height = int(font_size * 1.5)
+            base_y_offset = 250
+            border_width = max(4, int(font_size / 12))
+            
+            def is_emoji(c):
+                # Extended emoji and symbol range
+                cp = ord(c)
+                return cp > 0x2000 or (0x203C <= cp <= 0x3299)
+            
+            for idx, line in enumerate(lines):
+                if not line.strip():
+                    continue
+                
+                y_pos = base_y_offset + idx * line_height
+                
+                # Calculate total width for centering
+                # We render char by char or chunk by chunk to calculate width accurately
+                total_w = 0
+                max_char_h = 0
+                for char in line:
+                    f = emoji_font if is_emoji(char) else font
+                    try:
+                        left, top, right, bottom = draw.textbbox((0, 0), char, font=f)
+                        total_w += (right - left)
+                        max_char_h = max(max_char_h, bottom - top)
+                    except:
+                        w, h = draw.textsize(char, font=f)
+                        total_w += w
+                        max_char_h = max(max_char_h, h)
+                
+                x_cursor = (width - total_w) // 2
+                
+                # Center vertically relative to line height if emoji is much larger
+                for char in line:
+                    is_e = is_emoji(char)
+                    f = emoji_font if is_e else font
+                    
+                    # Get char bbox for positioning
+                    try:
+                        left, top, right, bottom = draw.textbbox((0, 0), char, font=f)
+                        char_w = right - left
+                        char_h = bottom - top
+                    except:
+                        char_w, char_h = draw.textsize(char, font=f)
+                    
+                    # Vertical alignment: try to align middle-bottom
+                    char_y = y_pos + (max_char_h - char_h) // 2 if is_e else y_pos
+                    
+                    if not is_e:
+                        # Draw border for regular text only (emojis already have their own style)
+                        for dx in range(-border_width, border_width + 1):
+                            for dy in range(-border_width, border_width + 1):
+                                if dx*dx + dy*dy <= border_width*border_width:
+                                    draw.text((x_cursor + dx, char_y + dy), char, font=f, fill="black")
+                    
+                    # Draw char
+                    draw.text((x_cursor, char_y), char, font=f, fill="white", embedded_color=is_e)
+                    x_cursor += char_w
+                
+            # Create temp file
+            temp_dir = self.raw_dir.parent
+            temp_file = tempfile.NamedTemporaryFile(
+                suffix='.png',
+                delete=False,
+                dir=str(temp_dir)
+            )
+            temp_file.close()
+            img.save(temp_file.name)
+            logger.debug(f"Rendered overlay to {temp_file.name}")
+            return temp_file.name
+            
+        except Exception as e:
+            logger.error(f"Failed to render text overlay: {e}")
+            return None
+            return None
+
     def merge_videos(self, video_files: list) -> bool:
         """Merge videos using FFmpeg."""
         if not video_files:
@@ -234,6 +363,7 @@ class VideoMerger:
             
             try:
                 logger.info("Re-encoding videos to common format...")
+                overlay_temp_files = []
                 for i, video_file in enumerate(video_files):
                     # Create temp file in videos directory
                     temp_dir = self.raw_dir.parent
@@ -256,6 +386,12 @@ class VideoMerger:
                     video_filename = video_file.name
                     text_overlay = self.video_texts.get(video_filename, '')
                     
+                    overlay_image_path = None
+                    if text_overlay:
+                        overlay_image_path = self._render_text_overlay(text_overlay, width, height)
+                        if overlay_image_path:
+                            overlay_temp_files.append(overlay_image_path)
+                    
                     # Video filters setup
                     if self.add_letterbox:
                         # Letterbox: maintain aspect ratio, add black bars
@@ -272,34 +408,24 @@ class VideoMerger:
                             'format=yuv420p'
                         ]
                     
-                    # Add text overlay if exists
-                    if text_overlay:
-                        lines = text_overlay.split('\n')
-                        
-                        base_font_size = 60
-                        font_size = int(base_font_size * (height / 1920)) if height > 0 else base_font_size
-                        font_size = max(font_size, 48)
-                        
-                        line_height = int(font_size * 1.5)
-                        base_y_offset = 250
-                        
-                        for idx, line in enumerate(lines):
-                            if line.strip():
-                                escaped_line = line.replace('\\', '\\\\').replace(':', '\\:').replace("'", "\\'")
-                                y_offset = base_y_offset + idx * line_height
-                                border_width = max(4, int(font_size / 12))
-                                
-                                # Show for 4 seconds
-                                text_filter = f"drawtext=text='{escaped_line}':fontcolor=white:fontsize={font_size}:x=(w-text_w)/2:y={y_offset}:borderw={border_width}:bordercolor=black@1.0:enable='between(t,0,4)'"
-                                video_filters.append(text_filter)
-                    
-                    vf_param = ','.join(video_filters)
+                    vf_base = ','.join(video_filters)
                     
                     # FFmpeg encode command
                     encode_cmd = [
                         'ffmpeg',
-                        '-i', str(video_file),
-                        '-vf', vf_param,
+                        '-i', str(video_file)
+                    ]
+                    
+                    if overlay_image_path:
+                        encode_cmd.extend(['-i', overlay_image_path])
+                        # Filter complex: apply scaling/padding, then overlay
+                        # User requested to last until the end instead of a few seconds
+                        vf_complex = f"[0:v]{vf_base}[base];[1:v]format=rgba[over];[base][over]overlay=0:0"
+                        encode_cmd.extend(['-filter_complex', vf_complex])
+                    else:
+                        encode_cmd.extend(['-vf', vf_base])
+                    
+                    encode_cmd.extend([
                         '-c:v', 'libx264',
                         '-preset', 'veryslow',
                         '-crf', '10',  # High quality
@@ -312,8 +438,8 @@ class VideoMerger:
                         '-c:a', 'aac',
                         '-b:a', '320k',
                         '-y',
-                        str(temp_files[-1])
-                    ]
+                        str(temp_file_path)
+                    ])
                     
                     encode_result = subprocess.run(
                         encode_cmd,
@@ -326,10 +452,10 @@ class VideoMerger:
                         logger.error(f"Failed to re-encode video {i+1}: {encode_result.stderr}")
                         raise Exception(f"Failed to re-encode video {i+1}")
                     
-                    if not temp_files[-1].exists():
-                        raise Exception(f"Re-encoded video missing: {temp_files[-1]}")
+                    if not temp_file_path.exists():
+                        raise Exception(f"Re-encoded video missing: {temp_file_path}")
                     
-                    file_size = temp_files[-1].stat().st_size / (1024 * 1024)
+                    file_size = temp_file_path.stat().st_size / (1024 * 1024)
                     logger.info(f"Re-encoded video {i+1}/{len(video_files)} (Size: {file_size:.2f} MB)")
                 
                 # Check all temp files
@@ -396,6 +522,12 @@ class VideoMerger:
                     try:
                         if temp_file.exists():
                             os.unlink(temp_file)
+                    except:
+                        pass
+                for overlay_file in overlay_temp_files:
+                    try:
+                        if os.path.exists(overlay_file):
+                            os.unlink(overlay_file)
                     except:
                         pass
                 

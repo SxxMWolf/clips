@@ -430,6 +430,7 @@
                             border: 1px solid var(--border-color);
                             border-radius: var(--radius-md);
                             transition: all 0.2s;
+                            position: relative;
                         ">
                             <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
                                 <span class="video-number" style="
@@ -437,7 +438,18 @@
                                     color: var(--accent);
                                     min-width: 24px;
                                 ">${i + 1}</span>
-                                <span style="flex: 1; color: var(--text-primary);">${displayName}</span>
+                                <span style="flex: 1; color: var(--text-primary); text-overflow: ellipsis; overflow: hidden; white-space: nowrap;">${displayName}</span>
+                                <button class="delete-video-btn" data-filename="${video}" title="Delete this video" style="
+                                    background: none;
+                                    border: none;
+                                    color: #ff4d4d;
+                                    cursor: pointer;
+                                    padding: 4px 8px;
+                                    border-radius: 4px;
+                                    font-size: 14px;
+                                    opacity: 0.6;
+                                    transition: all 0.2s;
+                                ">✕</button>
                                 <span style="
                                     color: var(--text-muted);
                                     font-size: 12px;
@@ -482,6 +494,20 @@
                         if (filename) {
                             videoTexts[filename] = e.target.value;
                             saveVideoTexts();
+                        }
+                    });
+                });
+
+                // Add event listeners to delete buttons
+                const deleteBtns = rawList.querySelectorAll('.delete-video-btn');
+                deleteBtns.forEach(btn => {
+                    btn.addEventListener('mouseenter', () => btn.style.opacity = '1');
+                    btn.addEventListener('mouseleave', () => btn.style.opacity = '0.6');
+                    btn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        const filename = e.target.dataset.filename;
+                        if (filename) {
+                            deleteVideo(filename);
                         }
                     });
                 });
@@ -728,6 +754,40 @@
             btn.textContent = 'Start Merge';
         }
     });
+
+    // Individual video delete function
+    async function deleteVideo(filename) {
+        // Find the element and dim it while deleting
+        const item = document.querySelector(`.video-item[data-filename="${filename}"]`);
+        if (item) item.style.opacity = '0.5';
+
+        try {
+            const response = await fetch('/api/upload/video/delete', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ filename: filename })
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                showToast('Video deleted', 'success');
+                // Remove from local order and text storage
+                videoOrder = videoOrder.filter(f => f !== filename);
+                delete videoTexts[filename];
+                saveVideoOrder();
+                saveVideoTexts();
+                
+                // Immediately update status
+                updateStatus();
+            } else {
+                showToast('Delete failed: ' + result.message, 'error');
+                if (item) item.style.opacity = '1';
+            }
+        } catch (error) {
+            showToast('Error deleting video: ' + error.message, 'error');
+            if (item) item.style.opacity = '1';
+        }
+    }
 
     // Clear source videos
     const clearFilesBtn = document.getElementById('clear-files-btn');

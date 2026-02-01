@@ -12,6 +12,7 @@ python-dotenv>=1.0.0
 # 웹 인터페이스
 flask>=3.0.0
 requests>=2.31.0
+Pillow>=10.0.0
 
 # AI 프롬프트 생성
 openai>=1.0.0
