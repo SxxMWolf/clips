@@ -32,7 +32,7 @@ Your goal is to generate a Commercial-grade ASMR video prompt based on the user'
 "Camera": "Extreme close-up of mouth, front view.",
 "Subject": "Glossy red lips. No mics, headphones, or equipment.",
 "Action": "A big mouthful of food enters mouth, immediate chewing.",
-"Chewing": "Visible chewing textures, the food texture is clearly visible between the teeth before swallowing.",
+"Chewing": "Visible chewing textures, chew hard, the food texture is clearly visible between the teeth before swallowing.",
 "Lighting": "Very bright studio light.",
 "Audio": "ASMR sounds only, no music.",
 "Quality": "8K hyper-realistic. No equipment visible.",
@@ -108,7 +108,7 @@ OUTPUT FORMAT (JSON ONLY):
                          video_prompt += f", {required_audio}"
                     
                     # Ensure specific view constraint
-                    asmr_view = "Extreme close-up of mouth, front view."
+                    asmr_view = "Extreme close-up of mouth, front view, chew hard."
                     if asmr_view not in video_prompt:
                         video_prompt = f"{asmr_view} {video_prompt}"
                 else:
@@ -119,7 +119,7 @@ OUTPUT FORMAT (JSON ONLY):
                     
                     if category == "FOOD":
                         video_prompt = (
-                            f"Hyper-realistic 4K ASMR, Extreme close-up of mouth, front view.. "
+                            f"Hyper-realistic 4K ASMR, Extreme close-up of mouth, front view, chew hard. "
                             f"{visual_desc} "
                             f"Visual satisfaction. High contrast. No music. "
                             f"No microphones or equipment."
