@@ -21,7 +21,7 @@ class PromptGenerator:
         self.client = OpenAI(api_key=api_key)
         self.model = "gpt-4o"
 
-    def generate_prompt(self, topic: str, add_credit: bool = True, is_asmr: bool = False) -> Dict:
+    def generate_prompt(self, topic: str, is_asmr: bool = False) -> Dict:
         logger.info(f"바이럴 비디오 프롬프트 생성 시작: {topic} (ASMR: {is_asmr})")
 
         if is_asmr:
@@ -31,11 +31,12 @@ Your goal is to generate a Commercial-grade ASMR video prompt based on the user'
 
 "Camera": "Extreme close-up of mouth, front view.",
 "Subject": "Glossy red lips. No mics, headphones, or equipment.",
-"Action": "Food enters mouth, immediate chewing.",
-"Chewing": "Visible chewing textures.",
+"Action": "A big mouthful of food enters mouth, immediate chewing.",
+"Chewing": "Visible chewing textures, the food texture is clearly visible between the teeth before swallowing.",
 "Lighting": "Very bright studio light.",
 "Audio": "ASMR sounds only, no music.",
 "Quality": "8K hyper-realistic. No equipment visible.",
+"Pacing": "Fast, continuous eating. NO slow motion. NO slowly. NO gentle pacing."
 "Hashtags": ["#mukbang", "#asmr", "#food", "#eating"]
 OUTPUT JSON FORMAT:
 {
@@ -105,6 +106,11 @@ OUTPUT FORMAT (JSON ONLY):
                     required_audio = "high-fidelity ASMR chewing sounds, intimate close-up audio perspective, every bite clearly audible, no music, no vocals"
                     if "high-fidelity ASMR" not in video_prompt:
                          video_prompt += f", {required_audio}"
+                    
+                    # Ensure specific view constraint
+                    asmr_view = "Extreme close-up of mouth, front view."
+                    if asmr_view not in video_prompt:
+                        video_prompt = f"{asmr_view} {video_prompt}"
                 else:
                     # Standard mode reconstruction
                     category = result.get("category", "GENERAL")
@@ -132,9 +138,8 @@ OUTPUT FORMAT (JSON ONLY):
                             f"High production value, dynamic composition, trending visual style."
                         )
 
+                # hook_caption = result.get("hook_caption", "")
                 hook_caption = result.get("hook_caption", "")
-                # if add_credit:
-                #    hook_caption += "\n\n(inspired by pinterest. dm for credits)"
 
                 return {
                     "video_prompt": video_prompt,
@@ -149,17 +154,17 @@ OUTPUT FORMAT (JSON ONLY):
                     time.sleep(2 * (attempt + 1)) # 지수 백오프
                 else:
                     logger.error("최대 재시도 횟수 초과. Fallback 사용.")
-                    return self._get_fallback_video(topic, add_credit)
+                    return self._get_fallback_video(topic)
 
     def _finalize_hashtags(self, tags: list) -> list:
         cleaned = [t if t.startswith("#") else f"#{t}" for t in tags]
-        final = ["#fyp"]
+        final = []
         for t in cleaned:
             if t.lower() != "#fyp" and t not in final:
                 final.append(t)
         return final[:10]
 
-    def _get_fallback_video(self, topic, add_credit):
+    def _get_fallback_video(self, topic):
         # Fallback에서도 가능한 영문 템플릿 사용 (번역 불가 시 어쩔 수 없음)
         return {
             "video_prompt": (
@@ -168,7 +173,7 @@ OUTPUT FORMAT (JSON ONLY):
                 "(Note: API quota exceeded, using generic prompt)"
             ),
             "hook_caption": f"{topic} ✨",
-            "hashtags": ["#fyp", "#viral", "#trending", "#shorts", "#video"]
+            "hashtags": ["#viral", "#trending", "#shorts", "#video"]
         }
 
 # --- 사용 예시 ---
