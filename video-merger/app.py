@@ -311,7 +311,7 @@ def generate_ai_prompt():
             }), 400
         
         prompt_generator = PromptGenerator()
-        result = prompt_generator.generate_prompt(topic, is_asmr=is_asmr)
+        result = prompt_generator.generate_prompt(topic)
         
         return jsonify({
             'success': True,
