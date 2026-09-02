@@ -1,244 +1,133 @@
-# Video Clips
+# clips
 
-영상 병합, AI 프롬프트 생성, AI 클립 생성 기능을 제공하는 웹 기반 도구입니다.
+영상 병합과 AI 프롬프트 생성 기능을 제공하는 웹 기반 도구입니다. AI SNS 콘텐츠 제작 파이프라인의 일부로 활용했습니다.
+
+| 항목 | 내용 |
+|------|------|
+| **상태** | 개발 완료 |
+| **유형** | 개인 프로젝트 (1인) |
+| **관련** | AI SNS (나노바나나 프로) 콘텐츠 제작 |
+
+---
+
+## 소개
+
+clips는 여러 짧은 영상을 하나로 병합하고, 주제를 입력하면 바이럴 프롬프트·훅·해시태그를 자동 생성하는 Flask 웹 앱입니다. ASMR 영상(`asmr`)과 고양이 여행 이미지(`meow`) 등 콘셉트별 프롬프트 템플릿을 지원합니다.
+
+---
 
 ## 주요 기능
 
-- ✅ **영상 병합**: 여러 영상을 하나로 병합 (드래그 앤 드롭, 순서 조정, 텍스트 오버레이 지원)
-- ✅ **AI 프롬프트 생성**: 주제를 입력하면 바이럴 프롬프트, 훅, 해시태그 자동 생성
-  - **asmr**: ASMR 영상용 프롬프트 (4:5 비율)
-  - **meow**: 3고양이 여행 이미지용 프롬프트 (극사실주의 스타일)
-- ✅ **AI 클립 생성**: YouTube 영상에서 바이럴 잠재력이 높은 클립 자동 생성
-- ✅ **웹 인터페이스**: 직관적인 웹 UI로 모든 기능 사용 가능
+| 기능 | 설명 |
+|------|------|
+| **영상 병합** | 드래그 앤 드롭, 순서 조정, 텍스트 오버레이, 출력 비율 선택 (4:5, 9:16, 16:9, 1:1) |
+| **AI 프롬프트 생성** | 주제 입력 → 바이럴 프롬프트, 훅, 해시태그 자동 생성 |
+| | `asmr` — ASMR 영상용 (4:5 비율) |
+| | `meow` — 3고양이 여행 이미지용 (극사실주의 스타일) |
+| **웹 UI** | Flask 기반 대시보드로 모든 기능 사용 |
 
-## 빠른 시작
+---
 
-### 1. 필수 요구사항
+## 기술 스택
 
-**FFmpeg 설치** (필수):
+| 영역 | 기술 |
+|------|------|
+| **Backend** | Python, Flask 3 |
+| **영상 처리** | FFmpeg |
+| **AI** | OpenAI API |
+| **기타** | Pillow, Playwright, python-dotenv |
+
+---
+
+## 프로젝트 구조
+
+```
+clips/
+└── video-merger/
+    ├── app.py              # Flask 메인 서버 (포트 5001)
+    ├── merge/              # 영상 병합 로직
+    ├── prompt/             # AI 프롬프트 생성
+    ├── templates/          # HTML 템플릿
+    ├── static/             # 정적 파일
+    ├── videos/
+    │   ├── raw/            # 원본 영상
+    │   └── final/          # 병합 결과
+    ├── requirements.txt
+    └── env.example
+```
+
+---
+
+## 시작하기
+
+### 사전 요구사항
+
+- Python 3.9+
+- FFmpeg
+
+### 1. FFmpeg 설치
+
 ```bash
 # Mac
 brew install ffmpeg
 
 # Ubuntu/Debian
 sudo apt update && sudo apt install ffmpeg
-
-# Windows
-# https://ffmpeg.org/download.html 에서 다운로드
 ```
 
-**Python 패키지 설치**:
+### 2. 설치
+
 ```bash
 cd video-merger
 pip3 install -r requirements.txt
-
-# Playwright 브라우저 설치 (AI 클립 기능 사용 시)
-python3 -m playwright install chromium
 ```
 
-### 2. 환경 변수 설정
+### 3. 환경 변수
 
 ```bash
-# env.example을 복사하여 .env 파일 생성
 cp env.example .env
-
-# .env 파일 편집
-nano .env
+# OPENAI_API_KEY 입력
 ```
 
-**필수 설정:**
-```bash
-OPENAI_API_KEY=your_openai_api_key_here
-```
+| 변수 | 필수 | 설명 |
+|------|------|------|
+| `OPENAI_API_KEY` | ✅ | OpenAI API 키 |
 
-### 3. 서버 실행
+### 4. 실행
 
 ```bash
 cd video-merger
-./start_servers.sh
-```
-
-또는 수동으로:
-```bash
-# 자동 시작 스크립트 (권장)
-./start_servers.sh
-
-# 또는 수동으로
-# FastAPI 서버 (AI 클리핑, 포트 8000)
-cd ai_clipping && python3 ai_clipping_api.py &
-
-# Flask 웹 서버 (메인 UI, 포트 5001)
 python3 app.py
 ```
 
-브라우저에서 **http://localhost:5001** 접속
+브라우저에서 `http://localhost:5001` 접속
 
-## 기능 상세
+---
 
-### 1. 영상 병합
+## 페이지
 
-- 드래그 앤 드롭으로 영상 파일 추가
-- 드래그로 영상 순서 조정
-- 각 영상에 상단 텍스트 오버레이 추가 (4초 동안 표시, 흰색 글씨 + 검은색 테두리)
-- 출력 비율 선택 (4:5, 9:16, 16:9, 1:1)
-- 키워드 기반 파일명 생성 (예: `keyword_timestamp.mp4`)
-- 원본 영상 비우기 기능 (삭제)
-- 고화질 출력 (CRF 10, veryslow preset)
+| 경로 | 설명 |
+|------|------|
+| `/` | 메인 대시보드 |
+| `/merge` | 영상 병합 |
+| `/ai-prompt` | AI 프롬프트 생성 |
 
-**사용 방법:**
-1. "영상 병합" 페이지 접속
-2. 영상 파일을 드래그 앤 드롭 또는 클릭하여 선택
-3. 드래그로 영상 순서 조정 (선택사항)
-4. 각 영상의 상단 텍스트 입력 (선택사항)
-5. 출력 비율 선택 (기본값: 4:5)
-6. 키워드 입력 (선택사항, 파일명으로 사용)
-7. "영상 병합 시작" 버튼 클릭
-8. 병합 완료 후 `videos/final/` 폴더에서 확인
+---
 
-### 2. AI 프롬프트 생성
+## 영상 병합 사용법
 
-주제를 입력하면 AI가 다음을 자동 생성:
-- **AI Video/Image Prompt**: 주제를 영어로 번역한 프롬프트
-- **Hook Caption**: 댓글을 유도하는 훅 캡션
-- **Viral Hashtags**: 바이럴 잠재력이 높은 해시태그 (5개)
+1. `/merge` 페이지 접속
+2. 영상 파일 드래그 앤 드롭 또는 선택
+3. 드래그로 순서 조정 (선택)
+4. 상단 텍스트 오버레이 입력 (선택)
+5. 출력 비율 선택 (기본 4:5)
+6. 키워드 입력 (파일명용, 선택)
+7. **영상 병합 시작** 클릭
+8. `videos/final/` 폴더에서 결과 확인
 
-**프롬프트 타입:**
+---
 
-**1. asmr (ASMR 영상용)**
-- ASMR 중심 영상 프롬프트 생성
-- 형식: `This is [주제]. Make an asmr-focused video with no music. Quality should be hd and as long as possible. In 4:5 aspect ratio.`
-- 훅 캡션: 댓글 유도 질문 포함
-- 해시태그: #fyp + 주제 관련 4개
+## 참고
 
-**2. meow (3고양이 여행 이미지용)**
-- 극사실주의 여행 사진 프롬프트 생성
-- 형식: `An ultra-realistic professional travel photograph of three specific cats: one orange tabby, one calico, and one black-and-white tuxedo. They are all wearing small, detailed tan tactical backpacks. They are [주제 기반 활동]. High resolution, 8k, cinematic lighting, sharp focus on their faces, adventure photography style.`
-- 캡션: 캐주얼한 일기 스타일 (예: "we are at disneyland! it was fun! what ride should we go on next?")
-- 해시태그: #fyp + 장소 + #cats + #travel + 국가
-
-**특징:**
-- 프롬프트 타입 선택 가능 (asmr / meow)
-- 크레딧 멘트 자동 추가 (옵션)
-- 필수 해시태그 자동 포함 (#fyp)
-- 입력값 자동 저장 (페이지 이동 시 유지)
-
-**사용 방법:**
-1. "AI 프롬프트" 페이지 접속
-2. 프롬프트 타입 선택 (asmr 또는 meow)
-3. 주제 입력 (예: "체리 캔디 슬라임" 또는 "상하이 디즈니랜드 방문")
-4. "프롬프트 생성" 버튼 클릭
-5. 생성된 프롬프트, 캡션, 해시태그 복사
-
-### 3. AI 클립 생성
-
-YouTube 영상에서 바이럴 잠재력이 높은 클립을 자동으로 생성합니다.
-
-**프로세스:**
-1. YouTube 영상 다운로드 및 오디오 추출
-2. Whisper STT로 영어 전사 (타임스탬프 포함)
-3. GPT가 바이럴 구간 3개 선택 (겹치지 않게)
-4. FFmpeg로 클립 생성 (4:5 비율, 1080x1350)
-5. 자동 자막 생성 및 삽입
-6. AI 제목 및 해시태그 생성
-
-**사용 방법:**
-1. "AI 클립" 페이지 접속
-2. YouTube URL 입력
-3. 프롬프트 입력 (선택사항)
-4. "YouTube 영상 다운로드" 버튼 클릭
-5. 전사 완료 후 "AI 클립 생성" 버튼 클릭
-6. 생성된 클립 확인 및 다운로드
-
-## 프로젝트 구조
-
-```
-clips/
-├── README.md                    # 이 파일
-└── video-merger/
-    ├── app.py                   # Flask 웹 서버
-    ├── start_servers.sh         # 서버 시작 스크립트
-    ├── requirements.txt         # Python 패키지
-    ├── env.example              # 환경 변수 템플릿
-    ├── prompt/                  # 프롬프트 생성 기능
-    │   └── prompt_generator.py # AI 프롬프트 생성
-    ├── merge/                   # 영상 병합 기능
-    │   └── merge.py            # 영상 병합 로직
-    ├── ai_clipping/             # 자동 클립 생성 기능
-    │   ├── ai_clipping_api.py  # FastAPI (AI 클리핑)
-    │   ├── stt_service.py       # Whisper STT
-    │   ├── clip_selector.py    # GPT 클립 선택
-    │   ├── clip_generator.py   # FFmpeg 클립 생성
-    │   └── caption_generator.py # AI 제목/해시태그 생성
-    ├── templates/              # HTML 템플릿
-    │   ├── base.html
-    │   ├── index.html
-    │   ├── merge.html
-    │   ├── ai_prompt.html
-    │   └── ai_clip.html
-    ├── static/                 # 정적 파일
-    │   ├── style.css
-    │   ├── script.js
-    │   └── ai_clip.js
-    └── videos/                 # 영상 파일
-        ├── raw/                # 원본 영상 (병합용)
-        ├── final/              # 병합된 영상
-        ├── downloads/          # 다운로드된 YouTube 영상
-        └── clips/              # 생성된 AI 클립
-```
-
-## 디렉토리 설명
-
-- `videos/raw/`: 병합할 원본 영상 파일
-- `videos/final/`: 병합된 최종 영상 파일
-- `videos/downloads/`: YouTube에서 다운로드한 영상
-- `videos/clips/`: AI로 생성된 클립
-- `transcripts/`: Whisper STT 결과 (JSON)
-
-## 환경 변수
-
-`.env` 파일에 다음 변수를 설정하세요:
-
-```bash
-# OpenAI API 키 (필수)
-OPENAI_API_KEY=your_openai_api_key_here
-```
-
-## 기술 스택
-
-- **Backend**: Flask (웹 서버), FastAPI (AI 클리핑 API)
-- **Video Processing**: FFmpeg
-- **AI/ML**: OpenAI GPT-4o-mini, Whisper
-- **Frontend**: HTML, CSS, JavaScript
-- **YouTube Download**: yt-dlp
-- **Computer Vision**: OpenCV (얼굴 감지)
-
-## 주의사항
-
-1. **보안**: `.env` 파일은 절대 Git에 커밋하지 마세요
-2. **FFmpeg**: 반드시 설치되어 있어야 합니다
-3. **API 키**: OpenAI API 키가 필요합니다
-4. **영상 형식**: MP4 파일만 지원됩니다
-5. **언어**: AI 클립 기능은 영어 영상만 지원합니다
-
-## 트러블슈팅
-
-**FFmpeg 오류**:
-- FFmpeg 설치 확인: `ffmpeg -version`
-- 설치 방법: https://ffmpeg.org/download.html
-
-**OpenAI API 오류**:
-- API 키 확인: `.env` 파일에 `OPENAI_API_KEY` 설정 확인
-- API 사용량 한도 확인
-
-**서버 실행 오류**:
-- 포트 충돌 확인: 5001, 8000 포트가 사용 중인지 확인
-- Python 패키지 설치 확인: `pip3 install -r requirements.txt`
-
-**영상 병합 실패**:
-- 영상 파일 형식 확인 (MP4)
-- FFmpeg 설치 확인
-- 디스크 공간 확인
-
-## 라이선스
-
-이 프로젝트는 개인 사용 목적으로 제작되었습니다.
+- 병합 출력: CRF 10, veryslow preset (고화질)
+- Playwright는 자동 업로드 관련 기능에 사용 (선택)
